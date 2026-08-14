@@ -23,13 +23,12 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: 🛠️ Generar Gradle Wrapper oficial si falta la clase
+      - name: 🛠️ Preparar Gradle Wrapper
         run: |
-          gradle wrapper --gradle-version 8.5
           chmod +x gradlew
 
       - name: 🚀 Compilar APK Debug
-        run: ./gradlew assembleDebug --stacktrace -Dorg.gradle.jvmargs="-Xmx2048m"
+        run: ./gradlew assembleDebug --stacktrace --info
 
       - name: 📦 Guardar APK como Artefacto de GitHub
         uses: actions/upload-artifact@v4
