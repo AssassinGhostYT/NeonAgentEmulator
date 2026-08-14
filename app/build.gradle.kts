@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.neon.emulator"
-    compileSdk = 34
+    compileSdk = 36  // Soporte Android 36 (Android 16 DP/Preview)
 
     defaultConfig {
         applicationId = "com.neon.emulator"
-        minSdk = 26
-        targetSdk = 34
+        minSdk = 26      // Soporte Mínimo Android 8.0 (API 26 Oreo)
+        targetSdk = 36   // Target SDK 36
         versionCode = 1
         versionName = "1.0.0"
 
@@ -38,6 +38,11 @@ android {
 
     buildFeatures {
         viewBinding = true
+        compose = true   // Soporte Jetpack Compose activado
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
 }
 
@@ -47,6 +52,15 @@ dependencies {
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.webkit:webkit:1.10.0")
+
+    // Jetpack Compose & UI Preview Support
+    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
+    implementation(composeBom)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    debugImplementation("androidx.compose.ui:ui-tooling")
 
     // Ktor Server para comunicación HTTP / WebSocket en tiempo real
     val ktorVersion = "2.3.8"
