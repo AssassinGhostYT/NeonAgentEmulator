@@ -53,13 +53,15 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.webkit:webkit:1.10.0")
 
-    // Jetpack Compose & UI Preview Support
+    // Jetpack Compose Activity Integration & Core UI
+    implementation("androidx.activity:activity-compose:1.8.2")
     val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
     implementation(composeBom)
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.runtime:runtime")
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     // Ktor Server para comunicación HTTP / WebSocket / MCP en tiempo real
