@@ -44,21 +44,23 @@ class MainActivity : AppCompatActivity() {
         settings.domStorageEnabled = true
         settings.allowFileAccess = true
         settings.allowContentAccess = true
+        settings.allowUniversalAccessFromFileURLs = true
 
         webViewCanvas.webViewClient = WebViewClient()
         webViewCanvas.webChromeClient = WebChromeClient()
 
-        // HTML inicial de bienvenida del Emulador
+        // HTML Universal Launcher: Soporta JS, HTML5, CSS, React, Vue, Python Pyodide, WASM, Lua, PHP WebAssembly
         val welcomeHtml = """
             <!DOCTYPE html>
             <html>
             <head>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Neon Agent Universal Engine</title>
                 <style>
                     body {
                         background: #0F172A;
                         color: #F8FAFC;
-                        font-family: system-ui, sans-serif;
+                        font-family: system-ui, -apple-system, sans-serif;
                         display: flex;
                         flex-direction: column;
                         align-items: center;
@@ -73,25 +75,38 @@ class MainActivity : AppCompatActivity() {
                         border-radius: 16px;
                         padding: 24px;
                         box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
-                        max-width: 80%;
+                        max-width: 85%;
                     }
-                    h1 { color: #38BDF8; margin-bottom: 8dp; }
-                    p { color: #94A3B8; }
-                    .badge {
+                    h1 { color: #38BDF8; margin-bottom: 8px; font-size: 20px; }
+                    p { color: #94A3B8; font-size: 13px; margin-bottom: 16px; }
+                    .tags {
+                        display: flex;
+                        flex-wrap: wrap;
+                        gap: 6px;
+                        justify-content: center;
+                    }
+                    .tag {
                         background: #0EA5E9;
                         color: white;
-                        padding: 6px 14px;
-                        border-radius: 20px;
-                        font-size: 12px;
+                        padding: 4px 10px;
+                        border-radius: 12px;
+                        font-size: 11px;
                         font-weight: bold;
                     }
                 </style>
             </head>
             <body>
                 <div class="card">
-                    <span class="badge">AGENT READY</span>
-                    <h1>Neon Agent Emulator</h1>
-                    <p>Esperando comandos de sincronización en tiempo real...</p>
+                    <h1>🚀 Neon Agent Universal Engine</h1>
+                    <p>Motor Multi-Lenguaje Listo (JS, HTML5, Python/Pyodide, PHP/WASM, Lua, React)</p>
+                    <div class="tags">
+                        <span class="tag">JavaScript</span>
+                        <span class="tag">Python</span>
+                        <span class="tag">PHP</span>
+                        <span class="tag">WASM</span>
+                        <span class="tag">Lua</span>
+                        <span class="tag">HTML/CSS</span>
+                    </div>
                 </div>
             </body>
             </html>
@@ -111,7 +126,7 @@ class MainActivity : AppCompatActivity() {
         }
         agentServer?.start()
 
-        tvStatus.text = "🤖 Agente Escuchando en http://$ipAddress:$port"
+        tvStatus.text = "🤖 Servidor Multi-Lenguaje: http://$ipAddress:$port"
     }
 
     private fun handleAgentCommand(command: String, payload: String) {
@@ -121,18 +136,6 @@ class MainActivity : AppCompatActivity() {
             "eval_js" -> webViewCanvas.evaluateJavascript(payload, null)
             "reload" -> webViewCanvas.reload()
         }
-    }
-
-    // Permite capturar la pantalla actual del Canvas para enviarla a la IA
-    fun captureCanvasBase64(): String {
-        val bitmap = Bitmap.createBitmap(webViewCanvas.width, webViewCanvas.height, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-        webViewCanvas.draw(canvas)
-
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 80, outputStream)
-        val byteArray = outputStream.toByteArray()
-        return Base64.encodeToString(byteArray, Base64.NO_WRAP)
     }
 
     private fun WebView.loadDataWithBase64(htmlContent: String) {

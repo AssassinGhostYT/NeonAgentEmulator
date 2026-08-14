@@ -21,10 +21,13 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
-          cache: 'gradle'
 
-      - name: 🔧 Conceder permisos a Gradle Wrapper
-        run: chmod +x gradlew || true
+      - name: 🛠️ Generar Gradle Wrapper automáticamente si no existe
+        run: |
+          if [ ! -f ./gradlew ]; then
+            gradle wrapper --gradle-version 8.5
+          fi
+          chmod +x gradlew
 
       - name: 🚀 Compilar APK Debug
         run: ./gradlew assembleDebug --stacktrace
