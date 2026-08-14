@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.NeonAgentEmulator" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#0ea5e9</item>
+        <item name="colorPrimaryVariant">#0284c7</item>
+        <item name="colorOnPrimary">#ffffff</item>
+        <item name="android:statusBarColor">#1E293B</item>
+    </style>
+</resources>
