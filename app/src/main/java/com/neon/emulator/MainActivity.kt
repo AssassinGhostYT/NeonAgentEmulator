@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.neon.emulator.model.OpenTab
 import com.neon.emulator.model.PhoneModel
+import com.neon.emulator.model.ProjectItem
 import com.neon.emulator.ui.drawer.FileExplorerDrawer
 import com.neon.emulator.ui.editor.CodeEditorScreen
 import com.neon.emulator.ui.editor.ProjectFile
@@ -114,25 +115,41 @@ fun NeonUniversalEmulatorApp(
 ) {
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
-    var projectName by remember { mutableStateOf("MusicApp") }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
-    var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
-    var activeTabId by remember { mutableStateOf(emulatorTab.id) }
-
-    val sampleMusicProject = remember(projectName) {
+    // Proyectos Reales Creados en el Workspace
+    val musicProjectRoot = remember {
         ProjectFile(
-            path = projectName,
-            name = projectName,
+            path = "SoundNeonMusicApp",
+            name = "SoundNeonMusicApp",
             isDirectory = true,
             children = listOf(
                 ProjectFile(
-                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/MainActivity.kt",
+                    path = "SoundNeonMusicApp/app/src/main/AndroidManifest.xml",
+                    name = "AndroidManifest.xml",
+                    isDirectory = false,
+                    content = """
+                        <?xml version="1.0" encoding="utf-8"?>
+                        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+                            <application
+                                android:label="SoundNeon Music"
+                                android:theme="@style/Theme.SoundNeon">
+                                <activity android:name=".MainActivity" android:exported="true">
+                                    <intent-filter>
+                                        <action android:name="android.intent.action.MAIN" />
+                                        <category android:name="android.intent.category.LAUNCHER" />
+                                    </intent-filter>
+                                </activity>
+                            </application>
+                        </manifest>
+                    """.trimIndent()
+                ),
+                ProjectFile(
+                    path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/MainActivity.kt",
                     name = "MainActivity.kt",
                     isDirectory = false,
                     content = """
-                        package com.ejemplo.musicapp
+                        package com.soundneon.app
 
                         import android.os.Bundle
                         import androidx.activity.ComponentActivity
@@ -142,34 +159,34 @@ fun NeonUniversalEmulatorApp(
                             override fun onCreate(savedInstanceState: Bundle?) {
                                 super.onCreate(savedInstanceState)
                                 setContent {
-                                    // Renderizando App de Música
+                                    // SoundNeon Jetpack App Entry Point
                                 }
                             }
                         }
                     """.trimIndent()
                 ),
                 ProjectFile(
-                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/ui/screens/HomeScreen.kt",
+                    path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/ui/HomeScreen.kt",
                     name = "HomeScreen.kt",
                     isDirectory = false,
                     content = """
-                        package com.ejemplo.musicapp.ui.screens
+                        package com.soundneon.app.ui
 
                         import androidx.compose.runtime.Composable
                         import androidx.compose.material3.Text
 
                         @Composable
                         fun HomeScreen() {
-                            Text(text = "Reproductor Cyberpunk Synthwave", color = Color.White)
+                            Text(text = "Reproductor SoundNeon Synthwave", color = Color.White)
                         }
                     """.trimIndent()
                 ),
                 ProjectFile(
-                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/domain/model/Song.kt",
+                    path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/domain/Song.kt",
                     name = "Song.kt",
                     isDirectory = false,
                     content = """
-                        package com.ejemplo.musicapp.domain.model
+                        package com.soundneon.app.domain
 
                         data class Song(
                             val id: String,
@@ -181,6 +198,37 @@ fun NeonUniversalEmulatorApp(
             )
         )
     }
+
+    val demoProjectRoot = remember {
+        ProjectFile(
+            path = "DemoApp",
+            name = "DemoApp",
+            isDirectory = true,
+            children = listOf(
+                ProjectFile(
+                    path = "DemoApp/MainActivity.kt",
+                    name = "MainActivity.kt",
+                    isDirectory = false,
+                    content = "package com.demo.app\n\n// Demo App Entry Point"
+                )
+            )
+        )
+    }
+
+    var projectsList by remember {
+        mutableStateOf(
+            listOf(
+                ProjectItem("1", "SoundNeon Music", "App de Música Jetpack Compose", musicProjectRoot),
+                ProjectItem("2", "DemoApp", "Proyecto de Prueba Básica", demoProjectRoot)
+            )
+        )
+    }
+
+    var activeProject by remember { mutableStateOf(projectsList[0]) }
+
+    val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
+    var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
+    var activeTabId by remember { mutableStateOf(emulatorTab.id) }
 
     Box(
         modifier = Modifier
@@ -207,7 +255,7 @@ fun NeonUniversalEmulatorApp(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "📦 $projectName",
+                        text = "📦 Proyecto Activo: ${activeProject.name}",
                         color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -235,7 +283,7 @@ fun NeonUniversalEmulatorApp(
                 }
             )
 
-            // Contenido Principal
+            // Contenido Principal (Emulador <-> Editor)
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 val activeTab = openTabs.find { it.id == activeTabId } ?: emulatorTab
 
@@ -254,10 +302,14 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
+                // 📂 PANEL EXPLORADOR DESLIZABLE MULTI-PROYECTO EN FILA
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
-                        projectName = projectName,
-                        sampleMusicProject = sampleMusicProject,
+                        projectsList = projectsList,
+                        activeProject = activeProject,
+                        onProjectSelected = { selectedProj ->
+                            activeProject = selectedProj
+                        },
                         onFileSelected = { file ->
                             val tabId = file.path
                             val existingTab = openTabs.find { it.id == tabId }
@@ -266,6 +318,21 @@ fun NeonUniversalEmulatorApp(
                             }
                             activeTabId = tabId
                             showFileExplorerDrawer = false
+                        },
+                        onCreateNewProject = {
+                            val newId = (projectsList.size + 1).toString()
+                            val newName = "NuevoProyecto_$newId"
+                            val newRoot = ProjectFile(
+                                path = newName,
+                                name = newName,
+                                isDirectory = true,
+                                children = listOf(
+                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.nuevo.app\n\nclass MainActivity")
+                                )
+                            )
+                            val newProjItem = ProjectItem(newId, newName, "Proyecto Jetpack Creado", newRoot)
+                            projectsList = projectsList + newProjItem
+                            activeProject = newProjItem
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )
@@ -276,8 +343,10 @@ fun NeonUniversalEmulatorApp(
         if (showSettingsSheet) {
             SettingsBottomSheet(
                 statusText = statusText,
-                projectName = projectName,
-                onProjectNameChange = { projectName = it },
+                projectName = activeProject.name,
+                onProjectNameChange = { newName ->
+                    activeProject = activeProject.copy(name = newName)
+                },
                 selectedModel = selectedModel,
                 onModelSelected = { selectedModel = it },
                 onDismiss = { showSettingsSheet = false }
