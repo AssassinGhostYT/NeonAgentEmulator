@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
     private var agentServer: AgentServer? = null
     private var webViewRef: WebView? = null
     private var pendingHtmlPayload: String? = null
-    private var serverStatusText by mutableStateOf("127.0.0.1:8080")
+    private var serverStatusText by mutableStateOf("Iniciando servidor...")
     private var isServerConnected by mutableStateOf(false)
 
     private var globalProjectsList = mutableStateListOf<ProjectItem>()
@@ -45,6 +45,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // ⚡ CARGA AUTOMÁTICA AL INICIAR: Leer físicamente todos los proyectos creados en el almacenamiento del teléfono
+        val diskProjects = StorageManager.loadProjectsFromDevice(this)
+        globalProjectsList.clear()
+        globalProjectsList.addAll(diskProjects)
+        if (diskProjects.isNotEmpty()) {
+            globalActiveProject = diskProjects.first()
+        }
+
         startAgentServer()
 
         setContent {
@@ -72,15 +81,23 @@ class MainActivity : ComponentActivity() {
         val port = 8080
         val ipAddress = getLocalIpAddress() ?: "127.0.0.1"
 
-        agentServer = AgentServer(port) { command, payload ->
+        agentServer = AgentServer(applicationContext, port) { command, payload ->
             runOnUiThread {
                 handleAgentCommand(command, payload)
             }
         }
-        agentServer?.start()
-
-        serverStatusText = "http://$ipAddress:$port"
-        isServerConnected = true
+        
+        agentServer?.start { success, errorMessage ->
+            runOnUiThread {
+                if (success) {
+                    serverStatusText = "http://$ipAddress:$port"
+                    isServerConnected = true
+                } else {
+                    serverStatusText = "Error: ${errorMessage ?: "Falló el inicio"}"
+                    isServerConnected = false
+                }
+            }
+        }
     }
 
     private fun handleAgentCommand(command: String, payload: String) {
