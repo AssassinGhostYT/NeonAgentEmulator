@@ -120,100 +120,42 @@ fun NeonUniversalEmulatorApp(
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // Proyecto NeonNFC Reader & Writer Creado
+    // Proyecto NeonNFC
     val nfcProjectRoot = remember {
         ProjectFile(
             path = "NeonNFCApp",
             name = "NeonNFCApp",
             isDirectory = true,
             children = listOf(
-                ProjectFile(
-                    path = "NeonNFCApp/app/src/main/AndroidManifest.xml",
-                    name = "AndroidManifest.xml",
-                    isDirectory = false,
-                    content = """
-                        <?xml version="1.0" encoding="utf-8"?>
-                        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-                            <uses-permission android:name="android.permission.NFC" />
-                            <uses-feature android:name="android.hardware.nfc" android:required="true" />
-                            
-                            <application android:label="NeonNFC" android:theme="@style/Theme.NeonNFC">
-                                <activity android:name=".MainActivity" android:exported="true">
-                                    <intent-filter>
-                                        <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-                                        <category android:name="android.intent.category.DEFAULT" />
-                                    </intent-filter>
-                                </activity>
-                            </application>
-                        </manifest>
-                    """.trimIndent()
-                ),
-                ProjectFile(
-                    path = "NeonNFCApp/app/src/main/java/com/neonnfc/app/MainActivity.kt",
-                    name = "MainActivity.kt",
-                    isDirectory = false,
-                    content = """
-                        package com.neonnfc.app
-
-                        import android.nfc.NfcAdapter
-                        import android.os.Bundle
-                        import androidx.activity.ComponentActivity
-                        import androidx.activity.compose.setContent
-                        import com.neonnfc.app.ui.NFCScanScreen
-
-                        class MainActivity : ComponentActivity() {
-                            private var nfcAdapter: NfcAdapter? = null
-
-                            override fun onCreate(savedInstanceState: Bundle?) {
-                                super.onCreate(savedInstanceState)
-                                nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-                                
-                                setContent {
-                                    NFCScanScreen(isNfcSupported = nfcAdapter != null)
-                                }
-                            }
-                        }
-                    """.trimIndent()
-                ),
-                ProjectFile(
-                    path = "NeonNFCApp/app/src/main/java/com/neonnfc/app/ui/NFCScanScreen.kt",
-                    name = "NFCScanScreen.kt",
-                    isDirectory = false,
-                    content = """
-                        package com.neonnfc.app.ui
-
-                        import androidx.compose.runtime.Composable
-                        import androidx.compose.material3.Text
-
-                        @Composable
-                        fun NFCScanScreen(isNfcSupported: Boolean) {
-                            Text(text = "📡 NeonNFC Reader & Writer Jetpack App", color = Color.White)
-                        }
-                    """.trimIndent()
-                ),
-                ProjectFile(
-                    path = "NeonNFCApp/app/src/main/java/com/neonnfc/app/domain/NFCTagModel.kt",
-                    name = "NFCTagModel.kt",
-                    isDirectory = false,
-                    content = """
-                        package com.neonnfc.app.domain
-
-                        data class NFCTagModel(
-                            val uid: String,
-                            val tagType: String,
-                            val memoryCapacityBytes: Int,
-                            val ndefPayloadText: String?
-                        )
-                    """.trimIndent()
-                )
+                ProjectFile("NeonNFCApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n    <uses-permission android:name=\"android.permission.NFC\" />\n</manifest>"),
+                ProjectFile("NeonNFCApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonnfc.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
+                ProjectFile("NeonNFCApp/NFCScanScreen.kt", "NFCScanScreen.kt", false, "package com.neonnfc.app.ui\n\n@Composable\nfun NFCScanScreen() {\n    Text(text = \"📡 NeonNFC Reader & Writer\")\n}"),
+                ProjectFile("NeonNFCApp/NFCTagModel.kt", "NFCTagModel.kt", false, "package com.neonnfc.app.domain\n\ndata class NFCTagModel(val uid: String)")
             )
         )
     }
 
+    // Proyecto NeonMarket E-Commerce
+    val marketProjectRoot = remember {
+        ProjectFile(
+            path = "NeonMarketApp",
+            name = "NeonMarketApp",
+            isDirectory = true,
+            children = listOf(
+                ProjectFile("NeonMarketApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>"),
+                ProjectFile("NeonMarketApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonmarket.app\n\nclass MainActivity"),
+                ProjectFile("NeonMarketApp/MarketHomeScreen.kt", "MarketHomeScreen.kt", false, "package com.neonmarket.app.ui\n\n@Composable\nfun MarketHomeScreen() {\n    Text(text = \"🛒 NeonMarket App\")\n}"),
+                ProjectFile("NeonMarketApp/Product.kt", "Product.kt", false, "package com.neonmarket.app.domain\n\ndata class Product(val id: String, val price: Double)")
+            )
+        )
+    }
+
+    // LISTA DE PROYECTOS VISIBLES EN EL WORKSPACE
     var projectsList by remember {
         mutableStateOf(
             listOf(
-                ProjectItem("1", "NeonNFC Reader", "App Lectora y Escritora NFC Jetpack Compose", nfcProjectRoot)
+                ProjectItem("1", "NeonNFC Reader", "App Lectora y Escritora NFC", nfcProjectRoot),
+                ProjectItem("2", "NeonMarket E-Commerce", "App de Mercado y Tienda Jetpack", marketProjectRoot)
             )
         )
     }
@@ -297,7 +239,7 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
-                // 📂 PANEL EXPLORADOR DESLIZABLE
+                // 📂 PANEL EXPLORADOR MOSTRANDO AMBOS PROYECTOS (NFC & MARKET) EN LA LISTA
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsList,
