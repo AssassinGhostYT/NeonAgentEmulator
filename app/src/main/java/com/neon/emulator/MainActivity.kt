@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
@@ -15,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -120,47 +118,12 @@ fun NeonUniversalEmulatorApp(
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // Proyecto NeonNFC
-    val nfcProjectRoot = remember {
-        ProjectFile(
-            path = "NeonNFCApp",
-            name = "NeonNFCApp",
-            isDirectory = true,
-            children = listOf(
-                ProjectFile("NeonNFCApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n    <uses-permission android:name=\"android.permission.NFC\" />\n</manifest>"),
-                ProjectFile("NeonNFCApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonnfc.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
-                ProjectFile("NeonNFCApp/NFCScanScreen.kt", "NFCScanScreen.kt", false, "package com.neonnfc.app.ui\n\n@Composable\nfun NFCScanScreen() {\n    Text(text = \"📡 NeonNFC Reader & Writer\")\n}"),
-                ProjectFile("NeonNFCApp/NFCTagModel.kt", "NFCTagModel.kt", false, "package com.neonnfc.app.domain\n\ndata class NFCTagModel(val uid: String)")
-            )
-        )
-    }
-
-    // Proyecto NeonMarket E-Commerce
-    val marketProjectRoot = remember {
-        ProjectFile(
-            path = "NeonMarketApp",
-            name = "NeonMarketApp",
-            isDirectory = true,
-            children = listOf(
-                ProjectFile("NeonMarketApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>"),
-                ProjectFile("NeonMarketApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonmarket.app\n\nclass MainActivity"),
-                ProjectFile("NeonMarketApp/MarketHomeScreen.kt", "MarketHomeScreen.kt", false, "package com.neonmarket.app.ui\n\n@Composable\nfun MarketHomeScreen() {\n    Text(text = \"🛒 NeonMarket App\")\n}"),
-                ProjectFile("NeonMarketApp/Product.kt", "Product.kt", false, "package com.neonmarket.app.domain\n\ndata class Product(val id: String, val price: Double)")
-            )
-        )
-    }
-
-    // LISTA DE PROYECTOS VISIBLES EN EL WORKSPACE
+    // ⚡ TIEMPO REAL: Los proyectos se cargan del disco privado real del usuario
     var projectsList by remember {
-        mutableStateOf(
-            listOf(
-                ProjectItem("1", "NeonNFC Reader", "App Lectora y Escritora NFC", nfcProjectRoot),
-                ProjectItem("2", "NeonMarket E-Commerce", "App de Mercado y Tienda Jetpack", marketProjectRoot)
-            )
-        )
+        mutableStateOf(StorageManager.loadProjectsFromDevice(context))
     }
 
-    var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList[0]) }
+    var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList.firstOrNull()) }
 
     val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
     var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
@@ -239,7 +202,7 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
-                // 📂 PANEL EXPLORADOR MOSTRANDO AMBOS PROYECTOS (NFC & MARKET) EN LA LISTA
+                // 📂 EXPLORADOR EN TIEMPO REAL REAL
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsList,
@@ -257,44 +220,32 @@ fun NeonUniversalEmulatorApp(
                             showFileExplorerDrawer = false
                         },
                         onDeleteFile = { proj, fileToDelete ->
-                            val updatedChildren = proj.rootFolder.children.filter { it.path != fileToDelete.path }
-                            val updatedRoot = proj.rootFolder.copy(children = updatedChildren)
-                            val updatedProj = proj.copy(rootFolder = updatedRoot)
-                            
-                            projectsList = projectsList.map { if (it.id == proj.id) updatedProj else it }
-                            if (activeProject?.id == proj.id) activeProject = updatedProj
-
                             StorageManager.deleteProjectOrFile(context, fileToDelete.path)
+                            projectsList = StorageManager.loadProjectsFromDevice(context)
+                            activeProject = projectsList.find { it.id == proj.id } ?: projectsList.firstOrNull()
 
                             openTabs = openTabs.filter { it.id != fileToDelete.path }
                             if (activeTabId == fileToDelete.path) activeTabId = "EMULATOR_TAB"
                         },
                         onDeleteProject = { projToDelete ->
-                            projectsList = projectsList.filter { it.id != projToDelete.id }
-                            if (activeProject?.id == projToDelete.id) {
-                                activeProject = projectsList.firstOrNull()
-                            }
                             StorageManager.deleteProjectOrFile(context, projToDelete.name)
+                            projectsList = StorageManager.loadProjectsFromDevice(context)
+                            activeProject = projectsList.firstOrNull()
 
                             openTabs = openTabs.filter { tab -> tab.isEmulator || !tab.id.startsWith(projToDelete.name) }
                             activeTabId = "EMULATOR_TAB"
                         },
                         onCreateNewProject = {
-                            val newId = (projectsList.size + 1).toString()
-                            val newName = "MiProyecto_$newId"
-                            val newRoot = ProjectFile(
-                                path = newName,
-                                name = newName,
-                                isDirectory = true,
-                                children = listOf(
-                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nclass MainActivity")
-                                )
-                            )
-                            val newProjItem = ProjectItem(newId, newName, "Proyecto Creado", newRoot)
-                            projectsList = projectsList + newProjItem
-                            activeProject = newProjItem
+                            val newId = System.currentTimeMillis().toString()
+                            val newName = "NuevoProyecto_$newId"
 
-                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.mi.app\n\nclass MainActivity")
+                            // ⚡ TIEMPO REAL: Se crea físicamente el archivo real en el almacenamiento
+                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.nuevo.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()")
+                            StorageManager.saveFileToDevice(context, newName, "AndroidManifest.xml", "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
+
+                            // Se recarga la lista física en tiempo real
+                            projectsList = StorageManager.loadProjectsFromDevice(context)
+                            activeProject = projectsList.find { it.name == newName }
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )
