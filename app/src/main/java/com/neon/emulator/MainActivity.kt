@@ -36,10 +36,10 @@ class MainActivity : ComponentActivity() {
 
     private var agentServer: AgentServer? = null
     private var webViewRef: WebView? = null
+    private var pendingHtmlPayload: String? = null
     private var serverStatusText by mutableStateOf("127.0.0.1:8080")
     private var isServerConnected by mutableStateOf(false)
 
-    // Estado global de proyectos modificable dinámicamente por la IA y por el usuario
     private var globalProjectsList = mutableStateListOf<ProjectItem>()
     private var globalActiveProject by mutableStateOf<ProjectItem?>(null)
 
@@ -54,7 +54,13 @@ class MainActivity : ComponentActivity() {
                 projectsState = globalProjectsList,
                 activeProjectState = globalActiveProject,
                 onActiveProjectChange = { globalActiveProject = it },
-                onWebViewCreated = { webViewRef = it },
+                onWebViewCreated = { webView ->
+                    webViewRef = webView
+                    pendingHtmlPayload?.let { html ->
+                        webView.loadDataWithBase64(html)
+                        pendingHtmlPayload = null
+                    }
+                },
                 onRenderUpdatedCode = { updatedCode ->
                     webViewRef?.loadDataWithBase64(updatedCode)
                 }
@@ -80,7 +86,13 @@ class MainActivity : ComponentActivity() {
     private fun handleAgentCommand(command: String, payload: String) {
         when (command) {
             "load_url" -> webViewRef?.loadUrl(payload)
-            "load_html" -> webViewRef?.loadDataWithBase64(payload)
+            "load_html" -> {
+                if (webViewRef != null) {
+                    webViewRef?.loadDataWithBase64(payload)
+                } else {
+                    pendingHtmlPayload = payload
+                }
+            }
             "eval_js" -> webViewRef?.evaluateJavascript(payload, null)
             "reload" -> webViewRef?.reload()
             "create_project" -> {
@@ -105,7 +117,6 @@ class MainActivity : ComponentActivity() {
                     val newRoot = ProjectFile(path = name, name = name, isDirectory = true, children = childrenList)
                     val newProj = ProjectItem(name, name, "Proyecto Creado por IA", newRoot)
 
-                    // ⚡ AGREGAR PROYECTO CREADO EN TIEMPO REAL A LA LISTA DEL EXPLORADOR
                     globalProjectsList.removeAll { it.name == name }
                     globalProjectsList.add(newProj)
                     globalActiveProject = newProj
@@ -236,7 +247,7 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
-                // 📂 EXPLORADOR MOSTRANDO PROYECTOS CREADOS EN TIEMPO REAL POR IA O POR EL USUARIO
+                // 📂 EXPLORADOR
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsState,
