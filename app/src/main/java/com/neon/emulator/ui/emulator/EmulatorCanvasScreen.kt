@@ -141,30 +141,6 @@ fun EmulatorCanvasScreen(
                                 webViewClient = WebViewClient()
                                 webChromeClient = WebChromeClient()
 
-                                // Cargar plantilla inicial visible brillante
-                                val defaultHtml = """
-                                    <!DOCTYPE html>
-                                    <html>
-                                    <head>
-                                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                        <style>
-                                            * { box-sizing: border-box; }
-                                            html, body { height: 100%; margin: 0; padding: 0; background: #0F172A; color: #FFFFFF; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-                                            .card { background: #1E293B; border: 2px solid #38BDF8; border-radius: 16px; padding: 24px; width: 85%; }
-                                            .title { font-size: 20px; font-weight: bold; color: #38BDF8; margin-bottom: 8px; }
-                                        </style>
-                                    </head>
-                                    <body>
-                                        <div class="card">
-                                            <div class="title">📱 Emulador Listo</div>
-                                            <div style="font-size: 12px; color: #94A3B8;">Pantalla conectada en tiempo real.</div>
-                                        </div>
-                                    </body>
-                                    </html>
-                                """.trimIndent()
-
-                                loadDataWithBase64(defaultHtml)
-
                                 onWebViewCreated(this)
                             }
                         },
@@ -202,9 +178,4 @@ fun EmulatorCanvasScreen(
             }
         }
     }
-}
-
-private fun WebView.loadDataWithBase64(htmlContent: String) {
-    val encodedHtml = android.util.Base64.encodeToString(htmlContent.toByteArray(), android.util.Base64.NO_WRAP)
-    this.loadData(encodedHtml, "text/html; charset=utf-8", "base64")
 }
