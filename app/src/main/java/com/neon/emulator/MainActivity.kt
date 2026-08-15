@@ -97,12 +97,12 @@ class MainActivity : ComponentActivity() {
                             val fPath = "$name/$fName"
                             val fContent = fObj.optString("content", "")
                             
-                            childrenList.add(ProjectFile(fPath, fName, false, fContent))
+                            childrenList.add(ProjectFile(fPath, fName, false, content = fContent))
                             StorageManager.saveFileToDevice(this, name, fName, fContent)
                         }
                     }
 
-                    val newRoot = ProjectFile(name, name, true, childrenList)
+                    val newRoot = ProjectFile(path = name, name = name, isDirectory = true, children = childrenList)
                     val newProj = ProjectItem(name, name, "Proyecto Creado por IA", newRoot)
 
                     // ⚡ AGREGAR PROYECTO CREADO EN TIEMPO REAL A LA LISTA DEL EXPLORADOR
@@ -284,8 +284,8 @@ fun NeonUniversalEmulatorApp(
                                 name = newName,
                                 isDirectory = true,
                                 children = listOf(
-                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
-                                    ProjectFile("$newName/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
+                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, content = "package com.mi.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
+                                    ProjectFile("$newName/AndroidManifest.xml", "AndroidManifest.xml", false, content = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
                                 )
                             )
                             val newProjItem = ProjectItem(newId, newName, "Proyecto Creado", newRoot)
