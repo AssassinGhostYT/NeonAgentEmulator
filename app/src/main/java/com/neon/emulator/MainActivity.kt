@@ -243,16 +243,16 @@ fun NeonUniversalEmulatorApp(
                                             <style>
                                                 * { box-sizing: border-box; }
                                                 body { background: #0F172A; color: #F8FAFC; font-family: system-ui; height: 100vh; margin: 0; padding: 0; display: flex; flex-direction: column; }
-                                                .content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; margin-top: 20px; }
-                                                .player-card { background: #1E293B; border: 2px solid #38BDF8; border-radius: 24px; padding: 20px; width: 100%; max-width: 280px; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.35); text-align: center; }
-                                                .album-art { width: 110px; height: 110px; border-radius: 18px; background: linear-gradient(135deg, #0EA5E9, #EC4899); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 44px; box-shadow: 0 8px 22px rgba(236, 72, 153, 0.4); }
-                                                .track-title { font-size: 16px; font-weight: bold; color: #FFF; margin: 0 0 4px; }
-                                                .artist { font-size: 12px; color: #94A3B8; margin-bottom: 14px; }
-                                                .progress-bar { background: #334155; height: 5px; border-radius: 3px; overflow: hidden; margin-bottom: 16px; }
+                                                .content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; margin-top: 60px; }
+                                                .player-card { background: #1E293B; border: 2px solid #38BDF8; border-radius: 24px; padding: 18px; width: 100%; max-width: 270px; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.35); text-align: center; }
+                                                .album-art { width: 100px; height: 100px; border-radius: 18px; background: linear-gradient(135deg, #0EA5E9, #EC4899); margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 40px; box-shadow: 0 8px 22px rgba(236, 72, 153, 0.4); }
+                                                .track-title { font-size: 15px; font-weight: bold; color: #FFF; margin: 0 0 4px; }
+                                                .artist { font-size: 11px; color: #94A3B8; margin-bottom: 12px; }
+                                                .progress-bar { background: #334155; height: 5px; border-radius: 3px; overflow: hidden; margin-bottom: 14px; }
                                                 .progress { background: linear-gradient(90deg, #38BDF8, #EC4899); width: 65%; height: 100%; }
                                                 .controls { display: flex; align-items: center; justify-content: space-around; }
-                                                .btn { background: #334155; border: none; color: white; width: 38px; height: 38px; border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center; }
-                                                .btn-play { background: linear-gradient(135deg, #0EA5E9, #EC4899); width: 48px; height: 48px; font-size: 18px; box-shadow: 0 0 15px rgba(14, 165, 233, 0.6); }
+                                                .btn { background: #334155; border: none; color: white; width: 36px; height: 36px; border-radius: 50%; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+                                                .btn-play { background: linear-gradient(135deg, #0EA5E9, #EC4899); width: 44px; height: 44px; font-size: 16px; box-shadow: 0 0 15px rgba(14, 165, 233, 0.6); }
                                                 .bottom-nav { background: #1E293B; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 10px 0 14px; }
                                                 .nav-item { display: flex; flex-direction: column; align-items: center; color: #94A3B8; font-size: 10px; cursor: pointer; }
                                                 .nav-item.active { color: #38BDF8; font-weight: bold; }
