@@ -8,7 +8,6 @@ import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,14 +23,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.neon.emulator.model.PhoneModel
-import kotlin.math.roundToInt
 
 @Composable
 fun EmulatorCanvasScreen(
@@ -49,26 +45,15 @@ fun EmulatorCanvasScreen(
         label = "glowColor"
     )
 
-    // Offset X e Y para arrastrar componentes con el dedo
-    var offsetX by remember { mutableStateOf(0f) }
-    var offsetY by remember { mutableStateOf(0f) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(6.dp),
         contentAlignment = Alignment.Center
     ) {
-        // 📲 CHASIS DEL TELÉFONO ARRASTRABLE CON EL DEDO (DRAG & DROP REAL)
+        // 📲 EL MARCO/CHASIS DEL TELÉFONO ES PERMANENTE Y FIJO (NO SE MUEVE)
         Box(
             modifier = Modifier
-                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
-                .pointerInput(Unit) {
-                    detectTransformGestures { _, pan, _, _ ->
-                        offsetX += pan.x
-                        offsetY += pan.y
-                    }
-                }
                 .fillMaxHeight()
                 .fillMaxWidth(selectedModel.aspectRatioWidth)
                 .shadow(20.dp, RoundedCornerShape(selectedModel.cornerRadius.dp))
@@ -136,7 +121,7 @@ fun EmulatorCanvasScreen(
                     }
                 }
 
-                // 🖥️ 2. PANTALLA COMPLETA DEL EMULATOR CANVAS
+                // 🖥️ 2. PANTALLA INTERNA DEL PROYECTO (AQUÍ SE MUEVEN Y REORDENAN LOS ELEMENTOS CON EL DEDO EN TIEMPO REAL)
                 Box(
                     modifier = Modifier
                         .weight(1f)
