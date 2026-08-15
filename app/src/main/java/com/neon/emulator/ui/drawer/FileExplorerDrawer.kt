@@ -35,7 +35,10 @@ fun FileExplorerDrawer(
     onCreateNewProject: () -> Unit,
     onClose: () -> Unit
 ) {
-    var expandedProjectIds by remember { mutableStateOf(setOf<String>()) }
+    // 💡 TODOS LOS PROYECTOS INICIAN EXPANDIDOS PARA QUE EL USUARIO VEA LOS ARCHIVOS INMEDIATAMENTE
+    var expandedProjectIds by remember(projectsList) {
+        mutableStateOf(projectsList.map { it.id }.toSet())
+    }
 
     Surface(
         modifier = Modifier
@@ -112,7 +115,6 @@ fun FileExplorerDrawer(
                                         Text(text = proj.name, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                                     }
 
-                                    // 🗑️ Botón Eliminar Proyecto Completo
                                     IconButton(
                                         onClick = { onDeleteProject(proj) },
                                         modifier = Modifier.size(24.dp)
@@ -122,7 +124,7 @@ fun FileExplorerDrawer(
                                 }
                             }
 
-                            // Archivos del Proyecto
+                            // Archivos del Proyecto (Se muestran desplegados por defecto)
                             if (isExpanded) {
                                 Column(modifier = Modifier.padding(start = 12.dp, top = 4.dp)) {
                                     flattenFiles(proj.rootFolder).forEach { file ->
@@ -149,7 +151,6 @@ fun FileExplorerDrawer(
                                                 Text(text = file.name, color = Color.White, fontSize = 11.sp)
                                             }
 
-                                            // 🗑️ Botón Eliminar Archivo Individual
                                             if (!file.isDirectory) {
                                                 IconButton(
                                                     onClick = { onDeleteFile(proj, file) },
