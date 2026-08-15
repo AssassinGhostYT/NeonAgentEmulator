@@ -118,12 +118,30 @@ fun NeonUniversalEmulatorApp(
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // ⚡ TIEMPO REAL: Los proyectos se cargan del disco privado real del usuario
-    var projectsList by remember {
-        mutableStateOf(StorageManager.loadProjectsFromDevice(context))
+    // Proyecto NeonAI Smart Dashboard Creado
+    val aiProjectRoot = remember {
+        ProjectFile(
+            path = "NeonAIDashboard",
+            name = "NeonAIDashboard",
+            isDirectory = true,
+            children = listOf(
+                ProjectFile("NeonAIDashboard/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>"),
+                ProjectFile("NeonAIDashboard/MainActivity.kt", "MainActivity.kt", false, "package com.neonai.dashboard\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
+                ProjectFile("NeonAIDashboard/AIDashboardScreen.kt", "AIDashboardScreen.kt", false, "package com.neonai.dashboard.ui\n\n@Composable\nfun AIDashboardScreen() {\n    Text(text = \"⚡ NeonAI Smart Dashboard\")\n}"),
+                ProjectFile("NeonAIDashboard/AgentMetrics.kt", "AgentMetrics.kt", false, "package com.neonai.dashboard.domain\n\ndata class AgentMetrics(val accuracy: Double, val latencyMs: Int)")
+            )
+        )
     }
 
-    var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList.firstOrNull()) }
+    var projectsList by remember {
+        mutableStateOf(
+            listOf(
+                ProjectItem("1", "NeonAI Smart Dashboard", "Dashboard Inteligente con Arrastre Táctil", aiProjectRoot)
+            )
+        )
+    }
+
+    var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList[0]) }
 
     val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
     var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
@@ -202,7 +220,7 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
-                // 📂 EXPLORADOR EN TIEMPO REAL REAL
+                // 📂 PANEL EXPLORADOR DESLIZABLE
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsList,
@@ -220,32 +238,44 @@ fun NeonUniversalEmulatorApp(
                             showFileExplorerDrawer = false
                         },
                         onDeleteFile = { proj, fileToDelete ->
+                            val updatedChildren = proj.rootFolder.children.filter { it.path != fileToDelete.path }
+                            val updatedRoot = proj.rootFolder.copy(children = updatedChildren)
+                            val updatedProj = proj.copy(rootFolder = updatedRoot)
+                            
+                            projectsList = projectsList.map { if (it.id == proj.id) updatedProj else it }
+                            if (activeProject?.id == proj.id) activeProject = updatedProj
+
                             StorageManager.deleteProjectOrFile(context, fileToDelete.path)
-                            projectsList = StorageManager.loadProjectsFromDevice(context)
-                            activeProject = projectsList.find { it.id == proj.id } ?: projectsList.firstOrNull()
 
                             openTabs = openTabs.filter { it.id != fileToDelete.path }
                             if (activeTabId == fileToDelete.path) activeTabId = "EMULATOR_TAB"
                         },
                         onDeleteProject = { projToDelete ->
+                            projectsList = projectsList.filter { it.id != projToDelete.id }
+                            if (activeProject?.id == projToDelete.id) {
+                                activeProject = projectsList.firstOrNull()
+                            }
                             StorageManager.deleteProjectOrFile(context, projToDelete.name)
-                            projectsList = StorageManager.loadProjectsFromDevice(context)
-                            activeProject = projectsList.firstOrNull()
 
                             openTabs = openTabs.filter { tab -> tab.isEmulator || !tab.id.startsWith(projToDelete.name) }
                             activeTabId = "EMULATOR_TAB"
                         },
                         onCreateNewProject = {
-                            val newId = System.currentTimeMillis().toString()
-                            val newName = "NuevoProyecto_$newId"
+                            val newId = (projectsList.size + 1).toString()
+                            val newName = "MiProyecto_$newId"
+                            val newRoot = ProjectFile(
+                                path = newName,
+                                name = newName,
+                                isDirectory = true,
+                                children = listOf(
+                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nclass MainActivity")
+                                )
+                            )
+                            val newProjItem = ProjectItem(newId, newName, "Proyecto Creado", newRoot)
+                            projectsList = projectsList + newProjItem
+                            activeProject = newProjItem
 
-                            // ⚡ TIEMPO REAL: Se crea físicamente el archivo real en el almacenamiento
-                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.nuevo.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()")
-                            StorageManager.saveFileToDevice(context, newName, "AndroidManifest.xml", "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
-
-                            // Se recarga la lista física en tiempo real
-                            projectsList = StorageManager.loadProjectsFromDevice(context)
-                            activeProject = projectsList.find { it.name == newName }
+                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.mi.app\n\nclass MainActivity")
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )
