@@ -140,14 +140,14 @@ fun NeonUniversalEmulatorApp(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 12.dp, bottom = 12.dp),
+                .padding(top = 8.dp, bottom = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // ⚙️ Botón discreto de Engranaje superior + Selección de Modelo
+            // ⚙️ Header Discreto con engranaje
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                    .padding(horizontal = 16.dp, vertical = 2.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -173,44 +173,42 @@ fun NeonUniversalEmulatorApp(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "Configuraciones IP & Modelos",
+                        contentDescription = "Configuraciones",
                         tint = Color(0xFF38BDF8)
                     )
                 }
             }
 
-            // 📲 MARCO EMULADOR DINÁMICO (Pixel 8 Pro, iPhone 15 Pro Max, Galaxy S24, iPhone SE)
+            // 📲 MARCO EMULADOR DINÁMICO
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(selectedModel.aspectRatioWidth)
-                    .padding(horizontal = 8.dp)
+                    .padding(horizontal = 6.dp)
                     .shadow(16.dp, RoundedCornerShape(selectedModel.cornerRadius.dp))
                     .border(2.dp, Color(0xFF38BDF8).copy(alpha = 0.6f), RoundedCornerShape(selectedModel.cornerRadius.dp))
                     .clip(RoundedCornerShape(selectedModel.cornerRadius.dp))
                     .background(Color(0xFF0F172A))
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Top Dynamic Island / Notch según el modelo
+                    // Top Dynamic Island / Notch
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(26.dp)
+                            .height(24.dp)
                             .background(Color.Black),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         if (selectedModel == PhoneModel.IPHONE_15_PRO_MAX) {
-                            // Dynamic Island iPhone
                             Box(
                                 modifier = Modifier
-                                    .width(90.dp)
-                                    .height(18.dp)
+                                    .width(85.dp)
+                                    .height(16.dp)
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(Color(0xFF1E293B))
                             )
                         } else {
-                            // Punch hole Android
                             Box(
                                 modifier = Modifier
                                     .size(10.dp)
@@ -220,7 +218,7 @@ fun NeonUniversalEmulatorApp(
                         }
                     }
 
-                    // 🖥️ PANTALLA CENTRADA Y AJUSTADA (WebView Canvas)
+                    // 🖥️ PANTALLA CENTRADA (WebView Canvas)
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -243,16 +241,42 @@ fun NeonUniversalEmulatorApp(
                                         <head>
                                             <meta name="viewport" content="width=device-width, initial-scale=1.0">
                                             <style>
-                                                body { background: #0F172A; color: #F8FAFC; font-family: system-ui; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-                                                .card { background: #1E293B; border: 2px solid #38BDF8; border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 0 20px rgba(56, 189, 248, 0.3); }
-                                                h1 { color: #38BDF8; font-size: 18px; margin-bottom: 8px; }
-                                                p { color: #94A3B8; font-size: 12px; }
+                                                * { box-sizing: border-box; }
+                                                body { background: #0F172A; color: #F8FAFC; font-family: system-ui; height: 100vh; margin: 0; padding: 0; display: flex; flex-direction: column; }
+                                                .content { flex: 1; display: flex; align-items: center; justify-content: center; padding: 20px; margin-top: 20px; }
+                                                .player-card { background: #1E293B; border: 2px solid #38BDF8; border-radius: 24px; padding: 20px; width: 100%; max-width: 280px; box-shadow: 0 10px 30px rgba(56, 189, 248, 0.35); text-align: center; }
+                                                .album-art { width: 110px; height: 110px; border-radius: 18px; background: linear-gradient(135deg, #0EA5E9, #EC4899); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 44px; box-shadow: 0 8px 22px rgba(236, 72, 153, 0.4); }
+                                                .track-title { font-size: 16px; font-weight: bold; color: #FFF; margin: 0 0 4px; }
+                                                .artist { font-size: 12px; color: #94A3B8; margin-bottom: 14px; }
+                                                .progress-bar { background: #334155; height: 5px; border-radius: 3px; overflow: hidden; margin-bottom: 16px; }
+                                                .progress { background: linear-gradient(90deg, #38BDF8, #EC4899); width: 65%; height: 100%; }
+                                                .controls { display: flex; align-items: center; justify-content: space-around; }
+                                                .btn { background: #334155; border: none; color: white; width: 38px; height: 38px; border-radius: 50%; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+                                                .btn-play { background: linear-gradient(135deg, #0EA5E9, #EC4899); width: 48px; height: 48px; font-size: 18px; box-shadow: 0 0 15px rgba(14, 165, 233, 0.6); }
+                                                .bottom-nav { background: #1E293B; border-top: 1px solid #334155; display: flex; justify-content: space-around; padding: 10px 0 14px; }
+                                                .nav-item { display: flex; flex-direction: column; align-items: center; color: #94A3B8; font-size: 10px; cursor: pointer; }
+                                                .nav-item.active { color: #38BDF8; font-weight: bold; }
+                                                .nav-icon { font-size: 18px; margin-bottom: 2px; }
                                             </style>
                                         </head>
                                         <body>
-                                            <div class="card">
-                                                <h1>🤖 Neon Agent Engine</h1>
-                                                <p>Listo para recibir cualquier lenguaje de programación automáticamente.</p>
+                                            <div class="content">
+                                                <div class="player-card">
+                                                    <div class="album-art">🎧</div>
+                                                    <div class="track-title">Cyberpunk Synthwave</div>
+                                                    <div class="artist">Neon Agent Live Engine</div>
+                                                    <div class="progress-bar"><div class="progress"></div></div>
+                                                    <div class="controls">
+                                                        <button class="btn">⏮</button>
+                                                        <button class="btn btn-play">▶</button>
+                                                        <button class="btn">⏭</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="bottom-nav">
+                                                <div class="nav-item active"><span class="nav-icon">🏠</span><span>Inicio</span></div>
+                                                <div class="nav-item"><span class="nav-icon">🔍</span><span>Buscar</span></div>
+                                                <div class="nav-item"><span class="nav-icon">👤</span><span>Perfil</span></div>
                                             </div>
                                         </body>
                                         </html>
@@ -271,7 +295,7 @@ fun NeonUniversalEmulatorApp(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(16.dp)
+                            .height(14.dp)
                             .background(Color.Black),
                         contentAlignment = Alignment.Center
                     ) {
@@ -294,13 +318,13 @@ fun NeonUniversalEmulatorApp(
             contentColor = Color.White,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(24.dp)
+                .padding(20.dp)
                 .shadow(12.dp, CircleShape)
         ) {
             Text(text = "🤖", fontSize = 22.sp)
         }
 
-        // ⚙️ SLIDING BOTTOM SHEET DE CONFIGURACIONES (IP & MODELOS)
+        // ⚙️ SLIDING BOTTOM SHEET DE CONFIGURACIONES
         if (showSettingsSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showSettingsSheet = false },
@@ -367,15 +391,13 @@ fun NeonUniversalEmulatorApp(
             }
         }
 
-        // 💬 DIÁLOGO DE CHAT DIRECTO CON LA IA (AGENTE FLOTANTE EN LA APP)
+        // 💬 DIÁLOGO DE CHAT DIRECTO CON LA IA
         if (showAgentChatDialog) {
             AlertDialog(
                 onDismissRequest = { showAgentChatDialog = false },
                 containerColor = Color(0xFF1E293B),
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("🤖 Agente IA Integrado", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    }
+                    Text("🤖 Agente IA Integrado", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 },
                 text = {
                     Column(modifier = Modifier.height(280.dp)) {
