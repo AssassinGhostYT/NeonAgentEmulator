@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
@@ -15,8 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -114,6 +113,7 @@ fun NeonUniversalEmulatorApp(
     onWebViewCreated: (WebView) -> Unit,
     onRenderUpdatedCode: (String) -> Unit
 ) {
+    val context = LocalContext.current
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
@@ -147,54 +147,19 @@ fun NeonUniversalEmulatorApp(
                     path = "NeonMarketApp/app/src/main/java/com/neonmarket/app/MainActivity.kt",
                     name = "MainActivity.kt",
                     isDirectory = false,
-                    content = """
-                        package com.neonmarket.app
-
-                        import android.os.Bundle
-                        import androidx.activity.ComponentActivity
-                        import androidx.activity.compose.setContent
-                        import com.neonmarket.app.ui.MarketHomeScreen
-
-                        class MainActivity : ComponentActivity() {
-                            override fun onCreate(savedInstanceState: Bundle?) {
-                                super.onCreate(savedInstanceState)
-                                setContent {
-                                    MarketHomeScreen()
-                                }
-                            }
-                        }
-                    """.trimIndent()
+                    content = "package com.neonmarket.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"
                 ),
                 ProjectFile(
                     path = "NeonMarketApp/app/src/main/java/com/neonmarket/app/ui/MarketHomeScreen.kt",
                     name = "MarketHomeScreen.kt",
                     isDirectory = false,
-                    content = """
-                        package com.neonmarket.app.ui
-
-                        import androidx.compose.runtime.Composable
-                        import androidx.compose.material3.Text
-
-                        @Composable
-                        fun MarketHomeScreen() {
-                            Text(text = "🛒 NeonMarket E-Commerce Jetpack App", color = Color.White)
-                        }
-                    """.trimIndent()
+                    content = "package com.neonmarket.app.ui\n\n@Composable\nfun MarketHomeScreen() {\n    Text(text = \"🛒 NeonMarket App\")\n}"
                 ),
                 ProjectFile(
                     path = "NeonMarketApp/app/src/main/java/com/neonmarket/app/domain/Product.kt",
                     name = "Product.kt",
                     isDirectory = false,
-                    content = """
-                        package com.neonmarket.app.domain
-
-                        data class Product(
-                            val id: String,
-                            val title: String,
-                            val price: Double,
-                            val category: String
-                        )
-                    """.trimIndent()
+                    content = "package com.neonmarket.app.domain\n\ndata class Product(val id: String, val title: String, val price: Double)"
                 )
             )
         )
@@ -267,7 +232,7 @@ fun NeonUniversalEmulatorApp(
                 }
             )
 
-            // Contenido Principal (Emulador <-> Editor)
+            // Contenido Principal
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                 val activeTab = openTabs.find { it.id == activeTabId } ?: emulatorTab
 
@@ -287,7 +252,7 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
-                // 📂 PANEL EXPLORADOR DESLIZABLE
+                // 📂 PANEL EXPLORADOR
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsList,
@@ -312,6 +277,8 @@ fun NeonUniversalEmulatorApp(
                             projectsList = projectsList.map { if (it.id == proj.id) updatedProj else it }
                             if (activeProject?.id == proj.id) activeProject = updatedProj
 
+                            StorageManager.deleteProjectOrFile(context, fileToDelete.path)
+
                             openTabs = openTabs.filter { it.id != fileToDelete.path }
                             if (activeTabId == fileToDelete.path) activeTabId = "EMULATOR_TAB"
                         },
@@ -320,6 +287,8 @@ fun NeonUniversalEmulatorApp(
                             if (activeProject?.id == projToDelete.id) {
                                 activeProject = projectsList.firstOrNull()
                             }
+                            StorageManager.deleteProjectOrFile(context, projToDelete.name)
+
                             openTabs = openTabs.filter { tab -> tab.isEmulator || !tab.id.startsWith(projToDelete.name) }
                             activeTabId = "EMULATOR_TAB"
                         },
@@ -338,7 +307,7 @@ fun NeonUniversalEmulatorApp(
                             projectsList = projectsList + newProjItem
                             activeProject = newProjItem
 
-                            StorageManager.saveFileToDevice(newName, "MainActivity.kt", "package com.mi.app\n\nclass MainActivity")
+                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.mi.app\n\nclass MainActivity")
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )

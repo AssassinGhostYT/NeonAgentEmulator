@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,6 +20,7 @@ fun CodeEditorScreen(
     projectName: String,
     onRenderUpdatedCode: (String) -> Unit
 ) {
+    val context = LocalContext.current
     var codeContent by remember(activeFile.path) { mutableStateOf(activeFile.content) }
     var saveMessage by remember { mutableStateOf("") }
 
@@ -48,19 +50,18 @@ fun CodeEditorScreen(
             Button(
                 onClick = {
                     activeFile.content = codeContent
-                    // 1. Guardar físicamente en el disco del teléfono (/sdcard/NeonEmulatorProjects/)
-                    val savedFile = StorageManager.saveFileToDevice(projectName, activeFile.name, codeContent)
+                    // 🔒 Guardar únicamente en el espacio privado aislado del proyecto creado
+                    val savedFile = StorageManager.saveFileToDevice(context, projectName, activeFile.name, codeContent)
                     if (savedFile != null) {
-                        saveMessage = "Guardado en /sdcard/NeonEmulatorProjects/"
+                        saveMessage = "Guardado en Workspace Privado"
                     }
-                    // 2. Aplicar cambio en tiempo real al emulador
                     onRenderUpdatedCode(codeContent)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
             ) {
                 Icon(Icons.Default.Download, contentDescription = "Guardar", modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Guardar en Disco", fontSize = 11.sp, color = Color.White)
+                Text("Guardar Cambios", fontSize = 11.sp, color = Color.White)
             }
         }
 
