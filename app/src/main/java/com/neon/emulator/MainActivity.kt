@@ -14,14 +14,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
@@ -38,13 +39,27 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.net.NetworkInterface
 
-enum class ViewMode { EMULATOR, PROJECT_EXPLORER, FILE_EDITOR }
+enum class PhoneModel(val displayName: String, val aspectRatioWidth: Float, val cornerRadius: Int) {
+    SAMSUNG_A55("Samsung Galaxy A55 5G", 0.98f, 28),
+    SAMSUNG_A50("Samsung Galaxy A50", 0.94f, 24),
+    SAMSUNG_S24_ULTRA("Samsung Galaxy S24 Ultra", 1.05f, 16),
+    PIXEL_8_PRO("Google Pixel 8 Pro", 1f, 36),
+    IPHONE_15_PRO_MAX("iPhone 15 Pro Max", 0.95f, 44),
+    IPHONE_SE("iPhone SE / Compact", 0.85f, 20)
+}
+
+data class OpenTab(
+    val id: String,
+    val title: String,
+    val isEmulator: Boolean = false,
+    val file: ProjectFile? = null
+)
 
 data class ProjectFile(
     val path: String,
     val name: String,
     val isDirectory: Boolean,
-    val content: String = "",
+    var content: String = "",
     val children: List<ProjectFile> = emptyList()
 )
 
@@ -64,7 +79,10 @@ class MainActivity : ComponentActivity() {
                 statusText = serverStatusText,
                 isConnected = isServerConnected,
                 onReload = { webViewRef?.reload() },
-                onWebViewCreated = { webViewRef = it }
+                onWebViewCreated = { webViewRef = it },
+                onRenderUpdatedCode = { updatedCode ->
+                    webViewRef?.loadDataWithBase64(updatedCode)
+                }
             )
         }
     }
@@ -127,15 +145,22 @@ fun NeonIDEStudioApp(
     statusText: String,
     isConnected: Boolean,
     onReload: () -> Unit,
-    onWebViewCreated: (WebView) -> Unit
+    onWebViewCreated: (WebView) -> Unit,
+    onRenderUpdatedCode: (String) -> Unit
 ) {
-    var currentViewMode by remember { mutableStateOf(ViewMode.EMULATOR) }
     var showSettingsSheet by remember { mutableStateOf(false) }
+    var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var projectName by remember { mutableStateOf("MusicApp") }
-    var activeEditingFile by remember { mutableStateOf<ProjectFile?>(null) }
-    var fileCodeContent by remember { mutableStateOf("") }
+    var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // Estructura oficial del proyecto Jetpack Compose en memoria
+    // Pestaña fija del Emulador (No se puede cerrar con X)
+    val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
+    
+    // Lista de Pestañas Abiertas
+    var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
+    var activeTabId by remember { mutableStateOf(emulatorTab.id) }
+
+    // Proyecto Jetpack Compose en memoria
     val sampleMusicProject = remember(projectName) {
         ProjectFile(
             path = projectName,
@@ -143,109 +168,55 @@ fun NeonIDEStudioApp(
             isDirectory = true,
             children = listOf(
                 ProjectFile(
-                    path = "$projectName/app",
-                    name = "app",
-                    isDirectory = true,
-                    children = listOf(
-                        ProjectFile(
-                            path = "$projectName/app/build.gradle.kts",
-                            name = "build.gradle.kts",
-                            isDirectory = false,
-                            content = """
-                                plugins {
-                                    id("com.android.application")
-                                    id("org.jetbrains.kotlin.android")
+                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/MainActivity.kt",
+                    name = "MainActivity.kt",
+                    isDirectory = false,
+                    content = """
+                        package com.ejemplo.musicapp
+
+                        import android.os.Bundle
+                        import androidx.activity.ComponentActivity
+                        import androidx.activity.compose.setContent
+
+                        class MainActivity : ComponentActivity() {
+                            override fun onCreate(savedInstanceState: Bundle?) {
+                                super.onCreate(savedInstanceState)
+                                setContent {
+                                    // Renderizando App de Música
                                 }
-                                android {
-                                    namespace = "com.ejemplo.musicapp"
-                                    compileSdk = 34
-                                    buildFeatures { compose = true }
-                                }
-                            """.trimIndent()
-                        ),
-                        ProjectFile(
-                            path = "$projectName/app/src/main/AndroidManifest.xml",
-                            name = "AndroidManifest.xml",
-                            isDirectory = false,
-                            content = """
-                                <?xml version="1.0" encoding="utf-8"?>
-                                <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-                                    <application
-                                        android:label="MusicApp"
-                                        android:theme="@style/Theme.MusicApp">
-                                        <activity android:name=".MainActivity" android:exported="true">
-                                            <intent-filter>
-                                                <action android:name="android.intent.action.MAIN" />
-                                                <category android:name="android.intent.category.LAUNCHER" />
-                                            </intent-filter>
-                                        </activity>
-                                    </application>
-                                </manifest>
-                            """.trimIndent()
-                        ),
-                        ProjectFile(
-                            path = "$projectName/app/src/main/java/com/ejemplo/musicapp",
-                            name = "src/main/java/com/ejemplo/musicapp",
-                            isDirectory = true,
-                            children = listOf(
-                                ProjectFile(
-                                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/MainActivity.kt",
-                                    name = "MainActivity.kt",
-                                    isDirectory = false,
-                                    content = """
-                                        package com.ejemplo.musicapp
+                            }
+                        }
+                    """.trimIndent()
+                ),
+                ProjectFile(
+                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/ui/screens/HomeScreen.kt",
+                    name = "HomeScreen.kt",
+                    isDirectory = false,
+                    content = """
+                        package com.ejemplo.musicapp.ui.screens
 
-                                        import android.os.Bundle
-                                        import androidx.activity.ComponentActivity
-                                        import androidx.activity.compose.setContent
-                                        import com.ejemplo.musicapp.ui.theme.MusicAppTheme
+                        import androidx.compose.runtime.Composable
+                        import androidx.compose.material3.Text
 
-                                        class MainActivity : ComponentActivity() {
-                                            override fun onCreate(savedInstanceState: Bundle?) {
-                                                super.onCreate(savedInstanceState)
-                                                setContent {
-                                                    MusicAppTheme {
-                                                        // Renderizando App de Música
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    """.trimIndent()
-                                ),
-                                ProjectFile(
-                                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/ui/screens/HomeScreen.kt",
-                                    name = "HomeScreen.kt",
-                                    isDirectory = false,
-                                    content = """
-                                        package com.ejemplo.musicapp.ui.screens
+                        @Composable
+                        fun HomeScreen() {
+                            Text(text = "Reproductor Cyberpunk Synthwave", color = Color.White)
+                        }
+                    """.trimIndent()
+                ),
+                ProjectFile(
+                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/domain/model/Song.kt",
+                    name = "Song.kt",
+                    isDirectory = false,
+                    content = """
+                        package com.ejemplo.musicapp.domain.model
 
-                                        import androidx.compose.runtime.Composable
-                                        import androidx.compose.material3.Text
-
-                                        @Composable
-                                        fun HomeScreen() {
-                                            Text(text = "Reproductor Cyberpunk Synthwave", color = Color.White)
-                                        }
-                                    """.trimIndent()
-                                ),
-                                ProjectFile(
-                                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/domain/model/Song.kt",
-                                    name = "Song.kt",
-                                    isDirectory = false,
-                                    content = """
-                                        package com.ejemplo.musicapp.domain.model
-
-                                        data class Song(
-                                            val id: String,
-                                            val title: String,
-                                            val artist: String,
-                                            val coverUrl: String
-                                        )
-                                    """.trimIndent()
-                                )
-                            )
+                        data class Song(
+                            val id: String,
+                            val title: String,
+                            val artist: String
                         )
-                    )
+                    """.trimIndent()
                 )
             )
         )
@@ -258,130 +229,138 @@ fun NeonIDEStudioApp(
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             
-            // ⚙️ Top Bar IDE
+            // ⚙️ Header Discreto con Botón de Explorador 📂 y Engranaje ⚙️
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF1E293B))
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (currentViewMode != ViewMode.EMULATOR) {
-                        IconButton(
-                            onClick = { currentViewMode = ViewMode.EMULATOR },
-                            modifier = Modifier.size(28.dp)
-                        ) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver al Emulador", tint = Color.White)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Text(
-                        text = if (currentViewMode == ViewMode.FILE_EDITOR) activeEditingFile?.name ?: "Editor" else "📦 Proyecto: $projectName",
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
-                        onClick = {
-                            currentViewMode = if (currentViewMode == ViewMode.PROJECT_EXPLORER) ViewMode.EMULATOR else ViewMode.PROJECT_EXPLORER
-                        },
+                        onClick = { showFileExplorerDrawer = !showFileExplorerDrawer },
                         modifier = Modifier.size(32.dp)
                     ) {
                         Icon(Icons.Default.Folder, contentDescription = "Explorador de Archivos", tint = Color(0xFF38BDF8))
                     }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "📦 $projectName",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-                    IconButton(
-                        onClick = { showSettingsSheet = true },
-                        modifier = Modifier.size(32.dp)
+                IconButton(
+                    onClick = { showSettingsSheet = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = "Configuración", tint = Color(0xFF38BDF8))
+                }
+            }
+
+            // 📌 BARRA DE PESTAÑAS (TABS BAR): Emulador Fijo + Archivos con Botón (X)
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0F172A))
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items(openTabs) { tab ->
+                    val isActive = (tab.id == activeTabId)
+                    Surface(
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .clickable { activeTabId = tab.id },
+                        color = if (isActive) Color(0xFF1E293B) else Color(0xFF0B0F19),
+                        shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                        border = if (isActive) androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF38BDF8)) else null
                     ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Configuración", tint = Color(0xFF38BDF8))
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (tab.isEmulator) Icons.Default.PhoneAndroid else Icons.Default.InsertDriveFile,
+                                contentDescription = null,
+                                tint = if (tab.isEmulator) Color(0xFF10B981) else Color(0xFFEC4899),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = tab.title,
+                                color = Color.White,
+                                fontSize = 11.sp,
+                                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
+                            )
+
+                            // ❌ Botón X solo para archivos (El Emulador NO tiene X)
+                            if (!tab.isEmulator) {
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Cerrar Pestaña",
+                                    tint = Color.Gray,
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .clickable {
+                                            openTabs = openTabs.filter { it.id != tab.id }
+                                            if (activeTabId == tab.id) {
+                                                activeTabId = "EMULATOR_TAB" // Regresa automáticamente al emulador
+                                            }
+                                        }
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            // 🔄 CUERPO PRINCIPAL SWAPPER: EMULADOR <-> EXPLORADOR <-> EDITOR DE CÓDIGO NATIVO
+            // 🔄 CONTENIDO SEGÚN LA PESTAÑA SELECCIONADA
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                when (currentViewMode) {
-                    ViewMode.EMULATOR -> {
-                        // 📲 Vista Emulador Nativo
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(8.dp)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(Color(0xFF0F172A))
-                        ) {
-                            AndroidView(
-                                factory = { context ->
-                                    WebView(context).apply {
-                                        settings.javaScriptEnabled = true
-                                        settings.domStorageEnabled = true
-                                        settings.allowFileAccess = true
-                                        settings.allowContentAccess = true
-                                        settings.allowUniversalAccessFromFileURLs = true
-                                        webViewClient = WebViewClient()
-                                        webChromeClient = WebChromeClient()
+                val activeTab = openTabs.find { it.id == activeTabId } ?: emulatorTab
 
-                                        onWebViewCreated(this)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
+                if (activeTab.isEmulator) {
+                    // 📲 PESTAÑA EMULADOR (Permanece siempre activa)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(4.dp)
+                            .clip(RoundedCornerShape(selectedModel.cornerRadius.dp))
+                            .background(Color(0xFF0F172A))
+                    ) {
+                        AndroidView(
+                            factory = { context ->
+                                WebView(context).apply {
+                                    settings.javaScriptEnabled = true
+                                    settings.domStorageEnabled = true
+                                    settings.allowFileAccess = true
+                                    settings.allowContentAccess = true
+                                    settings.allowUniversalAccessFromFileURLs = true
+                                    webViewClient = WebViewClient()
+                                    webChromeClient = WebChromeClient()
 
-                    ViewMode.PROJECT_EXPLORER -> {
-                        // 📂 Explorador de Archivos del Proyecto Android Studio
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color(0xFF0F172A))
-                                .padding(16.dp)
-                        ) {
-                            Text("📁 Estructura del Proyecto Jetpack Compose", color = Color(0xFF38BDF8), fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            LazyColumn {
-                                items(flattenFiles(sampleMusicProject)) { file ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                if (!file.isDirectory) {
-                                                    activeEditingFile = file
-                                                    fileCodeContent = file.content
-                                                    currentViewMode = ViewMode.FILE_EDITOR
-                                                }
-                                            }
-                                            .padding(vertical = 8.dp, horizontal = (file.path.split("/").size * 8).dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
-                                            contentDescription = null,
-                                            tint = if (file.isDirectory) Color(0xFF38BDF8) else Color(0xFFEC4899),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(text = file.name, color = Color.White, fontSize = 13.sp)
-                                    }
+                                    onWebViewCreated(this)
                                 }
-                            }
-                        }
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
+                } else {
+                    // ✏️ PESTAÑA EDITOR DE CÓDIGO (Para el archivo seleccionado)
+                    val activeFile = activeTab.file
+                    if (activeFile != null) {
+                        var codeContent by remember(activeFile.id) { mutableStateOf(activeFile.content) }
 
-                    ViewMode.FILE_EDITOR -> {
-                        // 💻 Editor de Código Kotlin Completo
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(Color(0xFF0D1117))
-                                .padding(16.dp)
+                                .padding(12.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -389,29 +368,30 @@ fun NeonIDEStudioApp(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "✏️ Editando: ${activeEditingFile?.name}",
+                                    text = "✏️ Editando: ${activeFile.name}",
                                     color = Color(0xFF38BDF8),
-                                    fontSize = 13.sp,
+                                    fontSize = 12.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Button(
                                     onClick = {
-                                        // Guardar cambios en el dispositivo móvil
-                                        currentViewMode = ViewMode.EMULATOR
+                                        activeFile.content = codeContent
+                                        // Renderizar los cambios al instante en el emulador
+                                        onRenderUpdatedCode(codeContent)
                                     },
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
                                 ) {
-                                    Icon(Icons.Default.Download, contentDescription = "Guardar", modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Download, contentDescription = "Guardar", modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Guardar en Móvil", fontSize = 11.sp, color = Color.White)
+                                    Text("Aplicar Cambios", fontSize = 11.sp, color = Color.White)
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
 
                             OutlinedTextField(
-                                value = fileCodeContent,
-                                onValueChange = { fileCodeContent = it },
+                                value = codeContent,
+                                onValueChange = { codeContent = it },
                                 modifier = Modifier.fillMaxSize(),
                                 textStyle = LocalTextStyle.current.copy(
                                     color = Color.White,
@@ -426,10 +406,68 @@ fun NeonIDEStudioApp(
                         }
                     }
                 }
+
+                // 📂 PANEL EXPLORADOR DESLIZABLE
+                if (showFileExplorerDrawer) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .width(260.dp)
+                            .align(Alignment.CenterStart),
+                        color = Color(0xFF0F172A),
+                        shadowElevation = 16.dp
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("📁 Archivos de $projectName", color = Color(0xFF38BDF8), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                IconButton(onClick = { showFileExplorerDrawer = false }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            LazyColumn {
+                                items(flattenFiles(sampleMusicProject)) { file ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                if (!file.isDirectory) {
+                                                    val tabId = file.path
+                                                    val existingTab = openTabs.find { it.id == tabId }
+                                                    if (existingTab == null) {
+                                                        val newTab = OpenTab(id = tabId, title = file.name, isEmulator = false, file = file)
+                                                        openTabs = openTabs + newTab
+                                                    }
+                                                    activeTabId = tabId
+                                                    showFileExplorerDrawer = false
+                                                }
+                                            }
+                                            .padding(vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+                                            contentDescription = null,
+                                            tint = if (file.isDirectory) Color(0xFF38BDF8) else Color(0xFFEC4899),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(text = file.name, color = Color.White, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
-        // ⚙️ SLIDING BOTTOM SHEET DE CONFIGURACIONES & CREACIÓN DE PROYECTO
+        // ⚙️ SLIDING BOTTOM SHEET DE CONFIGURACIONES
         if (showSettingsSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showSettingsSheet = false },
@@ -441,14 +479,14 @@ fun NeonIDEStudioApp(
                         .padding(24.dp)
                 ) {
                     Text(
-                        text = "⚙️ Configuración del Proyecto",
+                        text = "⚙️ Configuración del Emulador & Dispositivo",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text(text = "Nombre del Proyecto / App a Crear:", color = Color.White, fontSize = 12.sp)
+                    Text(text = "Nombre del Proyecto Activo:", color = Color.White, fontSize = 12.sp)
                     OutlinedTextField(
                         value = projectName,
                         onValueChange = { projectName = it },
@@ -458,19 +496,24 @@ fun NeonIDEStudioApp(
                     )
 
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = "Servidor Agente (Antigravity IP):", color = Color.White, fontSize = 12.sp)
-                    Surface(
-                        color = Color(0xFF0F172A),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = statusText,
-                            color = Color(0xFF38BDF8),
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                    Text(text = "Seleccionar Modelo de Dispositivo:", color = Color.White, fontSize = 12.sp)
+
+                    PhoneModel.values().forEach { model ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { selectedModel = model }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = (selectedModel == model),
+                                onClick = { selectedModel = model },
+                                colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF0EA5E9))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(text = model.displayName, color = Color.White, fontSize = 13.sp)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -479,21 +522,10 @@ fun NeonIDEStudioApp(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Crear / Cargar Proyecto", color = Color.White)
+                        Text("Guardar y Aplicar", color = Color.White)
                     }
                 }
             }
         }
     }
-}
-
-fun flattenFiles(file: ProjectFile): List<ProjectFile> {
-    val result = mutableListOf<ProjectFile>()
-    result.add(file)
-    if (file.isDirectory) {
-        file.children.forEach { child ->
-            result.addAll(flattenFiles(child))
-        }
-    }
-    return result
 }
