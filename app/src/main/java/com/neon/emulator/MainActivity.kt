@@ -118,62 +118,9 @@ fun NeonUniversalEmulatorApp(
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // Proyecto SoundNeon Music
-    val musicProjectRoot = remember {
-        ProjectFile(
-            path = "SoundNeonMusicApp",
-            name = "SoundNeonMusicApp",
-            isDirectory = true,
-            children = listOf(
-                ProjectFile(
-                    path = "SoundNeonMusicApp/app/src/main/AndroidManifest.xml",
-                    name = "AndroidManifest.xml",
-                    isDirectory = false,
-                    content = """
-                        <?xml version="1.0" encoding="utf-8"?>
-                        <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-                            <application android:label="SoundNeon Music" android:theme="@style/Theme.SoundNeon">
-                                <activity android:name=".MainActivity" android:exported="true">
-                                    <intent-filter>
-                                        <action android:name="android.intent.action.MAIN" />
-                                        <category android:name="android.intent.category.LAUNCHER" />
-                                    </intent-filter>
-                                </activity>
-                            </application>
-                        </manifest>
-                    """.trimIndent()
-                ),
-                ProjectFile(
-                    path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/MainActivity.kt",
-                    name = "MainActivity.kt",
-                    isDirectory = false,
-                    content = "package com.soundneon.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"
-                ),
-                ProjectFile(
-                    path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/ui/HomeScreen.kt",
-                    name = "HomeScreen.kt",
-                    isDirectory = false,
-                    content = "package com.soundneon.app.ui\n\n@Composable\nfun HomeScreen() {\n    Text(text = \"SoundNeon Synthwave\")\n}"
-                ),
-                ProjectFile(
-                    path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/domain/Song.kt",
-                    name = "Song.kt",
-                    isDirectory = false,
-                    content = "package com.soundneon.app.domain\n\ndata class Song(val id: String, val title: String)"
-                )
-            )
-        )
-    }
-
-    var projectsList by remember {
-        mutableStateOf(
-            listOf(
-                ProjectItem("1", "SoundNeon Music", "App de Música Jetpack Compose", musicProjectRoot)
-            )
-        )
-    }
-
-    var activeProject by remember { mutableStateOf(projectsList[0]) }
+    // Lista dinámica vacía por defecto (Sin plantillas fijas de SoundNeon)
+    var projectsList by remember { mutableStateOf(listOf<ProjectItem>()) }
+    var activeProject by remember { mutableStateOf<ProjectItem?>(null) }
 
     val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
     var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
@@ -204,7 +151,7 @@ fun NeonUniversalEmulatorApp(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "📦 Proyecto Activo: ${activeProject.name}",
+                        text = if (activeProject != null) "📦 Proyecto: ${activeProject?.name}" else "📦 Workspace Vacio",
                         color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -246,13 +193,13 @@ fun NeonUniversalEmulatorApp(
                     if (activeFile != null) {
                         CodeEditorScreen(
                             activeFile = activeFile,
-                            projectName = activeProject.name,
+                            projectName = activeProject?.name ?: "Proyecto",
                             onRenderUpdatedCode = onRenderUpdatedCode
                         )
                     }
                 }
 
-                // 📂 PANEL EXPLORADOR DESLIZABLE MULTI-PROYECTO EN FILA
+                // 📂 PANEL EXPLORADOR CON CREACIÓN Y ELIMINACIÓN REAL DE ARCHIVOS/PROYECTOS
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsList,
@@ -269,23 +216,45 @@ fun NeonUniversalEmulatorApp(
                             activeTabId = tabId
                             showFileExplorerDrawer = false
                         },
+                        onDeleteFile = { proj, fileToDelete ->
+                            // Eliminar archivo individual
+                            val updatedChildren = proj.rootFolder.children.filter { it.path != fileToDelete.path }
+                            val updatedRoot = proj.rootFolder.copy(children = updatedChildren)
+                            val updatedProj = proj.copy(rootFolder = updatedRoot)
+                            
+                            projectsList = projectsList.map { if (it.id == proj.id) updatedProj else it }
+                            if (activeProject?.id == proj.id) activeProject = updatedProj
+
+                            // Cerrar pestaña si estaba abierta
+                            openTabs = openTabs.filter { it.id != fileToDelete.path }
+                            if (activeTabId == fileToDelete.path) activeTabId = "EMULATOR_TAB"
+                        },
+                        onDeleteProject = { projToDelete ->
+                            // Eliminar proyecto completo
+                            projectsList = projectsList.filter { it.id != projToDelete.id }
+                            if (activeProject?.id == projToDelete.id) {
+                                activeProject = projectsList.firstOrNull()
+                            }
+                            // Cerrar pestañas de ese proyecto
+                            openTabs = openTabs.filter { tab -> tab.isEmulator || !tab.id.startsWith(projToDelete.name) }
+                            activeTabId = "EMULATOR_TAB"
+                        },
                         onCreateNewProject = {
                             val newId = (projectsList.size + 1).toString()
-                            val newName = "NuevoProyecto_$newId"
+                            val newName = "MiProyecto_$newId"
                             val newRoot = ProjectFile(
                                 path = newName,
                                 name = newName,
                                 isDirectory = true,
                                 children = listOf(
-                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.nuevo.app\n\nclass MainActivity")
+                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nclass MainActivity")
                                 )
                             )
-                            val newProjItem = ProjectItem(newId, newName, "Proyecto Jetpack Creado", newRoot)
+                            val newProjItem = ProjectItem(newId, newName, "Proyecto Creado", newRoot)
                             projectsList = projectsList + newProjItem
                             activeProject = newProjItem
 
-                            // Guardar estructura inicial físicamente en el teléfono
-                            StorageManager.saveFileToDevice(newName, "MainActivity.kt", "package com.nuevo.app\n\nclass MainActivity")
+                            StorageManager.saveFileToDevice(newName, "MainActivity.kt", "package com.mi.app\n\nclass MainActivity")
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )
@@ -296,9 +265,11 @@ fun NeonUniversalEmulatorApp(
         if (showSettingsSheet) {
             SettingsBottomSheet(
                 statusText = statusText,
-                projectName = activeProject.name,
+                projectName = activeProject?.name ?: "Sin Proyecto",
                 onProjectNameChange = { newName ->
-                    activeProject = activeProject.copy(name = newName)
+                    if (activeProject != null) {
+                        activeProject = activeProject?.copy(name = newName)
+                    }
                 },
                 selectedModel = selectedModel,
                 onModelSelected = { selectedModel = it },

@@ -52,7 +52,7 @@ fun EmulatorCanvasScreen(
             .padding(6.dp),
         contentAlignment = Alignment.Center
     ) {
-        // 📲 CHASIS DEL TELÉFONO SELECCIONADO (ALINEADO Y CENTRADO EN PANTALLA COMPLETA)
+        // 📲 CHASIS DEL TELÉFONO SELECCIONADO CON BORDES BRILLANTES
         Box(
             modifier = Modifier
                 .fillMaxHeight()
@@ -64,66 +64,69 @@ fun EmulatorCanvasScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 
-                // 📡 1. BARRA DE NOTIFICACIONES REAL (Hora, WiFi, Señal, Batería) + NOTCH CÁMARA
+                // 📡 1. BARRA DE NOTIFICACIONES BRILLANTE CON CÁMARA Y ESTADO VISIBLES
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(28.dp)
-                        .background(Color.Black)
+                        .height(30.dp)
+                        .background(Color(0xFF1E293B)) // 💡 Fondo visible gris/azul oscuro contrastado
                         .padding(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Hora Actual
+                    // Hora Actual en Blanco Puro
                     Text(
                         text = "12:45",
                         color = Color.White,
-                        fontSize = 11.sp,
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
 
-                    // Cámara Frontal / Notch según Modelo
+                    // Notch de Cámara Frontal con Anillo Neón Resaltado
                     when (selectedModel) {
                         PhoneModel.IPHONE_15_PRO_MAX -> {
                             Box(
                                 modifier = Modifier
-                                    .width(80.dp)
-                                    .height(14.dp)
+                                    .width(85.dp)
+                                    .height(16.dp)
                                     .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF1E293B))
+                                    .background(Color(0xFF0F172A))
+                                    .border(1.dp, Color(0xFF38BDF8), RoundedCornerShape(10.dp))
                             )
                         }
                         PhoneModel.SAMSUNG_A50 -> {
                             Box(
                                 modifier = Modifier
-                                    .width(16.dp)
-                                    .height(10.dp)
-                                    .clip(RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp))
-                                    .background(Color(0xFF1E293B))
+                                    .width(18.dp)
+                                    .height(12.dp)
+                                    .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
+                                    .background(Color(0xFF0F172A))
+                                    .border(1.dp, Color(0xFF38BDF8), RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
                             )
                         }
                         else -> {
-                            // Perforación de cámara punch-hole
+                            // Punch Hole Neón para A55, S24 Ultra & Pixel 8
                             Box(
                                 modifier = Modifier
-                                    .size(10.dp)
+                                    .size(12.dp)
                                     .clip(CircleShape)
-                                    .background(Color(0xFF1E293B))
+                                    .background(Color(0xFF0F172A))
+                                    .border(1.5.dp, Color(0xFF38BDF8), CircleShape)
                             )
                         }
                     }
 
-                    // Iconos de Estado (Señal 4G/5G, WiFi, Batería 100%)
+                    // Iconos de Estado en Blanco Radiante
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.SignalCellular4Bar, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                        Icon(Icons.Default.SignalCellular4Bar, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.Default.Wifi, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                        Icon(Icons.Default.Wifi, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Icon(Icons.Default.BatteryFull, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Default.BatteryFull, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                 }
 
-                // 🖥️ 2. ÁREA DE LA PANTALLA QUE OCUPA EL 100% DEL ALTO Y ANCHO (SIN RECORTES ARRIBA/MITAD)
+                // 🖥️ 2. PANTALLA COMPLETA DEL EMULATOR CANVAS
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -147,35 +150,31 @@ fun EmulatorCanvasScreen(
                     )
                 }
 
-                // 📱 3. BOTONES INFERIORES DE NAVEGACIÓN ANDROID REAL (Atrás ◀ | Inicio ⚪ | Recientes ⏹)
+                // 📱 3. BOTONES INFERIORES DE NAVEGACIÓN ANDROID
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(30.dp)
-                        .background(Color.Black),
+                        .height(32.dp)
+                        .background(Color(0xFF1E293B)), // 💡 Fondo visible contrastado
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Botón Recientes ⏹
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .size(13.dp)
                             .border(1.5.dp, Color.White, RoundedCornerShape(2.dp))
                     )
-
-                    // Botón Inicio ⚪
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .size(13.dp)
                             .clip(CircleShape)
                             .background(Color.White)
                     )
-
-                    // Botón Atrás ◀
                     Text(
                         text = "◀",
                         color = Color.White,
-                        fontSize = 11.sp
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
