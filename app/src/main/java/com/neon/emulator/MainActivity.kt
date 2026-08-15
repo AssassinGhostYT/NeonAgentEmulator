@@ -118,38 +118,11 @@ fun NeonUniversalEmulatorApp(
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // PROYECTOS INICIALES POR DEFECTO SIEMPRE PRESENTES EN MEMORIA Y DISCO
-    val initialProjects = remember {
-        val nfcRoot = ProjectFile(
-            path = "NeonNFCApp",
-            name = "NeonNFCApp",
-            isDirectory = true,
-            children = listOf(
-                ProjectFile("NeonNFCApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n    <uses-permission android:name=\"android.permission.NFC\" />\n</manifest>"),
-                ProjectFile("NeonNFCApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonnfc.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
-                ProjectFile("NeonNFCApp/NFCScanScreen.kt", "NFCScanScreen.kt", false, "package com.neonnfc.app.ui\n\n@Composable\nfun NFCScanScreen() {\n    Text(text = \"📡 NeonNFC Reader & Writer\")\n}"),
-                ProjectFile("NeonNFCApp/NFCTagModel.kt", "NFCTagModel.kt", false, "package com.neonnfc.app.domain\n\ndata class NFCTagModel(val uid: String)")
-            )
-        )
-        val marketRoot = ProjectFile(
-            path = "NeonMarketApp",
-            name = "NeonMarketApp",
-            isDirectory = true,
-            children = listOf(
-                ProjectFile("NeonMarketApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>"),
-                ProjectFile("NeonMarketApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonmarket.app\n\nclass MainActivity"),
-                ProjectFile("NeonMarketApp/MarketHomeScreen.kt", "MarketHomeScreen.kt", false, "package com.neonmarket.app.ui\n\n@Composable\nfun MarketHomeScreen() {\n    Text(text = \"🛒 NeonMarket App\")\n}"),
-                ProjectFile("NeonMarketApp/Product.kt", "Product.kt", false, "package com.neonmarket.app.domain\n\ndata class Product(val id: String, val price: Double)")
-            )
-        )
-
-        listOf(
-            ProjectItem("1", "NeonNFC Reader", "App Lectora y Escritora NFC", nfcRoot),
-            ProjectItem("2", "NeonMarket E-Commerce", "App de Mercado Jetpack", marketRoot)
-        )
+    // ⚡ WORKSPACE TOTALMENTE LIMPIO: Se lee EXCLUSIVAMENTE del almacenamiento real del usuario sin proyectos pre-cargados
+    var projectsList by remember {
+        mutableStateOf(StorageManager.loadProjectsFromDevice(context))
     }
 
-    var projectsList by remember { mutableStateOf(initialProjects) }
     var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList.firstOrNull()) }
 
     val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
@@ -229,7 +202,7 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
-                // 📂 EXPLORADOR MOSTRANDO SIEMPRE LOS PROYECTOS CREADOS
+                // 📂 EXPLORADOR MOSTRANDO ÚNICAMENTE LOS PROYECTOS REALES CREADOS POR EL USUARIO
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsList,
@@ -247,45 +220,31 @@ fun NeonUniversalEmulatorApp(
                             showFileExplorerDrawer = false
                         },
                         onDeleteFile = { proj, fileToDelete ->
-                            val updatedChildren = proj.rootFolder.children.filter { it.path != fileToDelete.path }
-                            val updatedRoot = proj.rootFolder.copy(children = updatedChildren)
-                            val updatedProj = proj.copy(rootFolder = updatedRoot)
-                            
-                            projectsList = projectsList.map { if (it.id == proj.id) updatedProj else it }
-                            if (activeProject?.id == proj.id) activeProject = updatedProj
-
                             StorageManager.deleteProjectOrFile(context, fileToDelete.path)
+                            projectsList = StorageManager.loadProjectsFromDevice(context)
+                            activeProject = projectsList.find { it.id == proj.id } ?: projectsList.firstOrNull()
 
                             openTabs = openTabs.filter { it.id != fileToDelete.path }
                             if (activeTabId == fileToDelete.path) activeTabId = "EMULATOR_TAB"
                         },
                         onDeleteProject = { projToDelete ->
-                            projectsList = projectsList.filter { it.id != projToDelete.id }
-                            if (activeProject?.id == projToDelete.id) {
-                                activeProject = projectsList.firstOrNull()
-                            }
                             StorageManager.deleteProjectOrFile(context, projToDelete.name)
+                            projectsList = StorageManager.loadProjectsFromDevice(context)
+                            activeProject = projectsList.firstOrNull()
 
                             openTabs = openTabs.filter { tab -> tab.isEmulator || !tab.id.startsWith(projToDelete.name) }
                             activeTabId = "EMULATOR_TAB"
                         },
                         onCreateNewProject = {
-                            val newId = (projectsList.size + 1).toString()
+                            val newId = System.currentTimeMillis().toString()
                             val newName = "MiProyecto_$newId"
-                            val newRoot = ProjectFile(
-                                path = newName,
-                                name = newName,
-                                isDirectory = true,
-                                children = listOf(
-                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nclass MainActivity"),
-                                    ProjectFile("$newName/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
-                                )
-                            )
-                            val newProjItem = ProjectItem(newId, newName, "Proyecto Creado", newRoot)
-                            projectsList = projectsList + newProjItem
-                            activeProject = newProjItem
 
-                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.mi.app\n\nclass MainActivity")
+                            // Se crean únicamente los archivos reales del nuevo proyecto al tocar el botón
+                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.mi.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()")
+                            StorageManager.saveFileToDevice(context, newName, "AndroidManifest.xml", "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
+
+                            projectsList = StorageManager.loadProjectsFromDevice(context)
+                            activeProject = projectsList.find { it.name == newName }
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )
