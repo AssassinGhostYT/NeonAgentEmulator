@@ -38,10 +38,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import java.net.NetworkInterface
 
 enum class PhoneModel(val displayName: String, val aspectRatioWidth: Float, val cornerRadius: Int) {
+    SAMSUNG_A55("Samsung Galaxy A55 5G", 0.98f, 28),
+    SAMSUNG_A50("Samsung Galaxy A50", 0.94f, 24),
+    SAMSUNG_S24_ULTRA("Samsung Galaxy S24 Ultra", 1.05f, 16),
     PIXEL_8_PRO("Google Pixel 8 Pro", 1f, 36),
     IPHONE_15_PRO_MAX("iPhone 15 Pro Max", 0.95f, 44),
-    SAMSUNG_S24_ULTRA("Samsung Galaxy S24 Ultra", 1.05f, 16),
-    IPHONE_SE("iPhone SE / Compact", 0.85f, 24)
+    IPHONE_SE("iPhone SE / Compact", 0.85f, 20)
 }
 
 data class ChatMessage(val sender: String, val text: String, val isUser: Boolean)
@@ -65,7 +67,6 @@ class MainActivity : ComponentActivity() {
                 onReload = { webViewRef?.reload() },
                 onWebViewCreated = { webViewRef = it },
                 onExecuteUserCommand = { command ->
-                    // Procesa comandos del chat y actualiza la UI
                     webViewRef?.evaluateJavascript(command, null)
                 }
             )
@@ -135,7 +136,7 @@ fun NeonUniversalEmulatorApp(
 ) {
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showAgentChatDialog by remember { mutableStateOf(false) }
-    var selectedModel by remember { mutableStateOf(PhoneModel.PIXEL_8_PRO) }
+    var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
     
     var chatMessages by remember {
         mutableStateOf(
@@ -175,7 +176,7 @@ fun NeonUniversalEmulatorApp(
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = selectedModel.displayName,
-                        color = Color.White, // ⚪ Texto en Blanco Puro
+                        color = Color.White,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -205,7 +206,7 @@ fun NeonUniversalEmulatorApp(
                     .background(Color(0xFF0F172A))
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Top Notch
+                    // Top Notch según Modelo
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -214,21 +215,35 @@ fun NeonUniversalEmulatorApp(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (selectedModel == PhoneModel.IPHONE_15_PRO_MAX) {
-                            Box(
-                                modifier = Modifier
-                                    .width(85.dp)
-                                    .height(16.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(Color(0xFF1E293B))
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .size(10.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF1E293B))
-                            )
+                        when (selectedModel) {
+                            PhoneModel.IPHONE_15_PRO_MAX -> {
+                                Box(
+                                    modifier = Modifier
+                                        .width(85.dp)
+                                        .height(16.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(Color(0xFF1E293B))
+                                )
+                            }
+                            PhoneModel.SAMSUNG_A50 -> {
+                                // Notch de Gota Infinity-U del Galaxy A50
+                                Box(
+                                    modifier = Modifier
+                                        .width(18.dp)
+                                        .height(12.dp)
+                                        .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
+                                        .background(Color(0xFF1E293B))
+                                )
+                            }
+                            else -> {
+                                // Punch Hole Infinity-O de Samsung A55, S24 Ultra & Pixel 8
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF1E293B))
+                                )
+                            }
                         }
                     }
 
@@ -302,7 +317,7 @@ fun NeonUniversalEmulatorApp(
                 ) {
                     Text(
                         text = "⚙️ Configuración Antigravity & Emulador",
-                        color = Color.White, // ⚪ Blanco
+                        color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -392,7 +407,7 @@ fun NeonUniversalEmulatorApp(
                                     ) {
                                         Text(
                                             text = msg.text,
-                                            color = Color.White, // ⚪ Todos los textos en Blanco Puro
+                                            color = Color.White,
                                             fontSize = 13.sp,
                                             modifier = Modifier.padding(8.dp)
                                         )
@@ -419,7 +434,6 @@ fun NeonUniversalEmulatorApp(
                                     chatMessages = chatMessages + ChatMessage("👤 Tú", userText, true)
                                     inputMessageText = ""
                                     
-                                    // Respuesta Inteligente de Gemini Pro & Antigravity
                                     val aiResponse = when {
                                         userText.contains("baja", ignoreCase = true) -> "⚡ Antigravity: Aplicando ajuste de margen inferior en la UI..."
                                         userText.contains("color", ignoreCase = true) -> "⚡ Antigravity: Cambiando paleta de colores a Blanco & Neón..."
