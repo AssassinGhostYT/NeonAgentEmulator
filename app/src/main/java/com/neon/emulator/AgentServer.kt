@@ -23,7 +23,6 @@ class AgentServer(
     fun start() {
         CoroutineScope(Dispatchers.IO).launch {
             server = embeddedServer(Netty, port = port) {
-                // Habilitar WebSockets (Sockets bidireccionales en tiempo real)
                 install(WebSockets) {
                     pingPeriod = Duration.ofSeconds(15)
                     timeout = Duration.ofSeconds(15)
@@ -40,15 +39,12 @@ class AgentServer(
                         call.respondText("""{"status": "online", "mcp_protocol": "v1.0", "websockets": true}""", ContentType.Application.Json)
                     }
 
-                    // 🔌 Protocolo MCP (Model Context Protocol) Endpoint para IAs
                     post("/mcp/v1/tools/call") {
                         val requestJson = call.receiveText()
-                        // Procesa tool calls de MCP enviadas por la IA
                         onCommandReceived("mcp_tool", requestJson)
                         call.respondText("""{"result": "mcp_tool_executed", "status": "success"}""", ContentType.Application.Json)
                     }
 
-                    // ⚡ Real-Time WebSocket Channel (Para conexión fluida e instantánea IA <-> App)
                     webSocket("/ws/agent") {
                         send(Frame.Text("""{"type": "connected", "message": "Canal WebSocket IA - App Móvil Establecido"}"""))
                         for (frame in incoming) {
@@ -70,8 +66,16 @@ class AgentServer(
                             onCommandReceived(parts[0], parts[1])
                             call.respondText("""{"result": "ok"}""", ContentType.Application.Json)
                         } else {
-                            call.respond(HttpStatusCode.BadRequest, "Formato invalido")
+                            onCommandReceived("create_project", body)
+                            call.respondText("""{"result": "created"}""", ContentType.Application.Json)
                         }
+                    }
+
+                    // ⚡ ENDPOINT PARA CREAR PROYECTO Y ARCHIVOS REALES EN TIEMPO REAL DESDE LA IA
+                    post("/api/create_project") {
+                        val jsonPayload = call.receiveText()
+                        onCommandReceived("create_project", jsonPayload)
+                        call.respondText("""{"result": "project_created"}""", ContentType.Application.Json)
                     }
 
                     post("/api/render") {

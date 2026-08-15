@@ -29,6 +29,7 @@ import com.neon.emulator.ui.editor.StorageManager
 import com.neon.emulator.ui.emulator.EmulatorCanvasScreen
 import com.neon.emulator.ui.navigation.TabsBar
 import com.neon.emulator.ui.settings.SettingsBottomSheet
+import org.json.JSONObject
 import java.net.NetworkInterface
 
 class MainActivity : ComponentActivity() {
@@ -38,6 +39,10 @@ class MainActivity : ComponentActivity() {
     private var serverStatusText by mutableStateOf("127.0.0.1:8080")
     private var isServerConnected by mutableStateOf(false)
 
+    // Estado global de proyectos modificable dinámicamente por la IA y por el usuario
+    private var globalProjectsList = mutableStateListOf<ProjectItem>()
+    private var globalActiveProject by mutableStateOf<ProjectItem?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         startAgentServer()
@@ -46,6 +51,9 @@ class MainActivity : ComponentActivity() {
             NeonUniversalEmulatorApp(
                 statusText = serverStatusText,
                 isConnected = isServerConnected,
+                projectsState = globalProjectsList,
+                activeProjectState = globalActiveProject,
+                onActiveProjectChange = { globalActiveProject = it },
                 onWebViewCreated = { webViewRef = it },
                 onRenderUpdatedCode = { updatedCode ->
                     webViewRef?.loadDataWithBase64(updatedCode)
@@ -75,6 +83,36 @@ class MainActivity : ComponentActivity() {
             "load_html" -> webViewRef?.loadDataWithBase64(payload)
             "eval_js" -> webViewRef?.evaluateJavascript(payload, null)
             "reload" -> webViewRef?.reload()
+            "create_project" -> {
+                try {
+                    val json = JSONObject(payload)
+                    val name = json.optString("name", "NuevoProyecto")
+                    val filesArray = json.optJSONArray("files")
+
+                    val childrenList = mutableListOf<ProjectFile>()
+                    if (filesArray != null) {
+                        for (i in 0 until filesArray.length()) {
+                            val fObj = filesArray.getJSONObject(i)
+                            val fName = fObj.optString("name", "File.kt")
+                            val fPath = "$name/$fName"
+                            val fContent = fObj.optString("content", "")
+                            
+                            childrenList.add(ProjectFile(fPath, fName, false, fContent))
+                            StorageManager.saveFileToDevice(this, name, fName, fContent)
+                        }
+                    }
+
+                    val newRoot = ProjectFile(name, name, true, childrenList)
+                    val newProj = ProjectItem(name, name, "Proyecto Creado por IA", newRoot)
+
+                    // ⚡ AGREGAR PROYECTO CREADO EN TIEMPO REAL A LA LISTA DEL EXPLORADOR
+                    globalProjectsList.removeAll { it.name == name }
+                    globalProjectsList.add(newProj)
+                    globalActiveProject = newProj
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
         }
     }
 
@@ -110,6 +148,9 @@ class MainActivity : ComponentActivity() {
 fun NeonUniversalEmulatorApp(
     statusText: String,
     isConnected: Boolean,
+    projectsState: MutableList<ProjectItem>,
+    activeProjectState: ProjectItem?,
+    onActiveProjectChange: (ProjectItem?) -> Unit,
     onWebViewCreated: (WebView) -> Unit,
     onRenderUpdatedCode: (String) -> Unit
 ) {
@@ -117,13 +158,6 @@ fun NeonUniversalEmulatorApp(
     var showSettingsSheet by remember { mutableStateOf(false) }
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
-
-    // ⚡ WORKSPACE TOTALMENTE LIMPIO: Se lee EXCLUSIVAMENTE del almacenamiento real del usuario sin proyectos pre-cargados
-    var projectsList by remember {
-        mutableStateOf(StorageManager.loadProjectsFromDevice(context))
-    }
-
-    var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList.firstOrNull()) }
 
     val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
     var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
@@ -154,7 +188,7 @@ fun NeonUniversalEmulatorApp(
                     }
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = if (activeProject != null) "📦 Proyecto: ${activeProject?.name}" else "📦 Workspace Vacio",
+                        text = if (activeProjectState != null) "📦 Proyecto: ${activeProjectState.name}" else "📦 Workspace Vacio",
                         color = Color.White,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
@@ -196,19 +230,19 @@ fun NeonUniversalEmulatorApp(
                     if (activeFile != null) {
                         CodeEditorScreen(
                             activeFile = activeFile,
-                            projectName = activeProject?.name ?: "Proyecto",
+                            projectName = activeProjectState?.name ?: "Proyecto",
                             onRenderUpdatedCode = onRenderUpdatedCode
                         )
                     }
                 }
 
-                // 📂 EXPLORADOR MOSTRANDO ÚNICAMENTE LOS PROYECTOS REALES CREADOS POR EL USUARIO
+                // 📂 EXPLORADOR MOSTRANDO PROYECTOS CREADOS EN TIEMPO REAL POR IA O POR EL USUARIO
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
-                        projectsList = projectsList,
-                        activeProject = activeProject,
+                        projectsList = projectsState,
+                        activeProject = activeProjectState,
                         onProjectSelected = { selectedProj ->
-                            activeProject = selectedProj
+                            onActiveProjectChange(selectedProj)
                         },
                         onFileSelected = { file ->
                             val tabId = file.path
@@ -221,16 +255,23 @@ fun NeonUniversalEmulatorApp(
                         },
                         onDeleteFile = { proj, fileToDelete ->
                             StorageManager.deleteProjectOrFile(context, fileToDelete.path)
-                            projectsList = StorageManager.loadProjectsFromDevice(context)
-                            activeProject = projectsList.find { it.id == proj.id } ?: projectsList.firstOrNull()
+                            val updatedChildren = proj.rootFolder.children.filter { it.path != fileToDelete.path }
+                            val updatedRoot = proj.rootFolder.copy(children = updatedChildren)
+                            val updatedProj = proj.copy(rootFolder = updatedRoot)
+                            
+                            val idx = projectsState.indexOfFirst { it.id == proj.id }
+                            if (idx >= 0) projectsState[idx] = updatedProj
+                            if (activeProjectState?.id == proj.id) onActiveProjectChange(updatedProj)
 
                             openTabs = openTabs.filter { it.id != fileToDelete.path }
                             if (activeTabId == fileToDelete.path) activeTabId = "EMULATOR_TAB"
                         },
                         onDeleteProject = { projToDelete ->
                             StorageManager.deleteProjectOrFile(context, projToDelete.name)
-                            projectsList = StorageManager.loadProjectsFromDevice(context)
-                            activeProject = projectsList.firstOrNull()
+                            projectsState.removeIf { it.id == projToDelete.id }
+                            if (activeProjectState?.id == projToDelete.id) {
+                                onActiveProjectChange(projectsState.firstOrNull())
+                            }
 
                             openTabs = openTabs.filter { tab -> tab.isEmulator || !tab.id.startsWith(projToDelete.name) }
                             activeTabId = "EMULATOR_TAB"
@@ -238,13 +279,20 @@ fun NeonUniversalEmulatorApp(
                         onCreateNewProject = {
                             val newId = System.currentTimeMillis().toString()
                             val newName = "MiProyecto_$newId"
+                            val newRoot = ProjectFile(
+                                path = newName,
+                                name = newName,
+                                isDirectory = true,
+                                children = listOf(
+                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
+                                    ProjectFile("$newName/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
+                                )
+                            )
+                            val newProjItem = ProjectItem(newId, newName, "Proyecto Creado", newRoot)
+                            projectsState.add(newProjItem)
+                            onActiveProjectChange(newProjItem)
 
-                            // Se crean únicamente los archivos reales del nuevo proyecto al tocar el botón
-                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.mi.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()")
-                            StorageManager.saveFileToDevice(context, newName, "AndroidManifest.xml", "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
-
-                            projectsList = StorageManager.loadProjectsFromDevice(context)
-                            activeProject = projectsList.find { it.name == newName }
+                            StorageManager.saveFileToDevice(context, newName, "MainActivity.kt", "package com.mi.app\n\nclass MainActivity")
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )
@@ -255,10 +303,10 @@ fun NeonUniversalEmulatorApp(
         if (showSettingsSheet) {
             SettingsBottomSheet(
                 statusText = statusText,
-                projectName = activeProject?.name ?: "Sin Proyecto",
+                projectName = activeProjectState?.name ?: "Sin Proyecto",
                 onProjectNameChange = { newName ->
-                    if (activeProject != null) {
-                        activeProject = activeProject?.copy(name = newName)
+                    if (activeProjectState != null) {
+                        onActiveProjectChange(activeProjectState.copy(name = newName))
                     }
                 },
                 selectedModel = selectedModel,
