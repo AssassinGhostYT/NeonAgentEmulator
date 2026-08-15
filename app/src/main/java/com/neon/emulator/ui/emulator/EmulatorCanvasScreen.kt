@@ -8,6 +8,7 @@ import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -17,18 +18,20 @@ import androidx.compose.material.icons.filled.BatteryFull
 import androidx.compose.material.icons.filled.SignalCellular4Bar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.neon.emulator.model.PhoneModel
+import kotlin.math.roundToInt
 
 @Composable
 fun EmulatorCanvasScreen(
@@ -46,15 +49,26 @@ fun EmulatorCanvasScreen(
         label = "glowColor"
     )
 
+    // Offset X e Y para arrastrar componentes con el dedo
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(6.dp),
         contentAlignment = Alignment.Center
     ) {
-        // 📲 CHASIS DEL TELÉFONO SELECCIONADO CON BORDES BRILLANTES
+        // 📲 CHASIS DEL TELÉFONO ARRASTRABLE CON EL DEDO (DRAG & DROP REAL)
         Box(
             modifier = Modifier
+                .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, _, _ ->
+                        offsetX += pan.x
+                        offsetY += pan.y
+                    }
+                }
                 .fillMaxHeight()
                 .fillMaxWidth(selectedModel.aspectRatioWidth)
                 .shadow(20.dp, RoundedCornerShape(selectedModel.cornerRadius.dp))
@@ -64,17 +78,16 @@ fun EmulatorCanvasScreen(
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 
-                // 📡 1. BARRA DE NOTIFICACIONES BRILLANTE CON CÁMARA Y ESTADO VISIBLES
+                // 📡 1. BARRA DE NOTIFICACIONES REAL
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(30.dp)
-                        .background(Color(0xFF1E293B)) // 💡 Fondo visible gris/azul oscuro contrastado
+                        .background(Color(0xFF1E293B))
                         .padding(horizontal = 14.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Hora Actual en Blanco Puro
                     Text(
                         text = "12:45",
                         color = Color.White,
@@ -82,7 +95,6 @@ fun EmulatorCanvasScreen(
                         fontWeight = FontWeight.Bold
                     )
 
-                    // Notch de Cámara Frontal con Anillo Neón Resaltado
                     when (selectedModel) {
                         PhoneModel.IPHONE_15_PRO_MAX -> {
                             Box(
@@ -105,7 +117,6 @@ fun EmulatorCanvasScreen(
                             )
                         }
                         else -> {
-                            // Punch Hole Neón para A55, S24 Ultra & Pixel 8
                             Box(
                                 modifier = Modifier
                                     .size(12.dp)
@@ -116,7 +127,6 @@ fun EmulatorCanvasScreen(
                         }
                     }
 
-                    // Iconos de Estado en Blanco Radiante
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.SignalCellular4Bar, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
@@ -155,7 +165,7 @@ fun EmulatorCanvasScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(32.dp)
-                        .background(Color(0xFF1E293B)), // 💡 Fondo visible contrastado
+                        .background(Color(0xFF1E293B)),
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
