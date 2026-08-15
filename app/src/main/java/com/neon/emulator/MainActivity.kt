@@ -118,30 +118,39 @@ fun NeonUniversalEmulatorApp(
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // Proyecto NeonAI Smart Dashboard Creado
-    val aiProjectRoot = remember {
-        ProjectFile(
-            path = "NeonAIDashboard",
-            name = "NeonAIDashboard",
+    // PROYECTOS INICIALES POR DEFECTO SIEMPRE PRESENTES EN MEMORIA Y DISCO
+    val initialProjects = remember {
+        val nfcRoot = ProjectFile(
+            path = "NeonNFCApp",
+            name = "NeonNFCApp",
             isDirectory = true,
             children = listOf(
-                ProjectFile("NeonAIDashboard/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>"),
-                ProjectFile("NeonAIDashboard/MainActivity.kt", "MainActivity.kt", false, "package com.neonai.dashboard\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
-                ProjectFile("NeonAIDashboard/AIDashboardScreen.kt", "AIDashboardScreen.kt", false, "package com.neonai.dashboard.ui\n\n@Composable\nfun AIDashboardScreen() {\n    Text(text = \"⚡ NeonAI Smart Dashboard\")\n}"),
-                ProjectFile("NeonAIDashboard/AgentMetrics.kt", "AgentMetrics.kt", false, "package com.neonai.dashboard.domain\n\ndata class AgentMetrics(val accuracy: Double, val latencyMs: Int)")
+                ProjectFile("NeonNFCApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n    <uses-permission android:name=\"android.permission.NFC\" />\n</manifest>"),
+                ProjectFile("NeonNFCApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonnfc.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"),
+                ProjectFile("NeonNFCApp/NFCScanScreen.kt", "NFCScanScreen.kt", false, "package com.neonnfc.app.ui\n\n@Composable\nfun NFCScanScreen() {\n    Text(text = \"📡 NeonNFC Reader & Writer\")\n}"),
+                ProjectFile("NeonNFCApp/NFCTagModel.kt", "NFCTagModel.kt", false, "package com.neonnfc.app.domain\n\ndata class NFCTagModel(val uid: String)")
             )
+        )
+        val marketRoot = ProjectFile(
+            path = "NeonMarketApp",
+            name = "NeonMarketApp",
+            isDirectory = true,
+            children = listOf(
+                ProjectFile("NeonMarketApp/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>"),
+                ProjectFile("NeonMarketApp/MainActivity.kt", "MainActivity.kt", false, "package com.neonmarket.app\n\nclass MainActivity"),
+                ProjectFile("NeonMarketApp/MarketHomeScreen.kt", "MarketHomeScreen.kt", false, "package com.neonmarket.app.ui\n\n@Composable\nfun MarketHomeScreen() {\n    Text(text = \"🛒 NeonMarket App\")\n}"),
+                ProjectFile("NeonMarketApp/Product.kt", "Product.kt", false, "package com.neonmarket.app.domain\n\ndata class Product(val id: String, val price: Double)")
+            )
+        )
+
+        listOf(
+            ProjectItem("1", "NeonNFC Reader", "App Lectora y Escritora NFC", nfcRoot),
+            ProjectItem("2", "NeonMarket E-Commerce", "App de Mercado Jetpack", marketRoot)
         )
     }
 
-    var projectsList by remember {
-        mutableStateOf(
-            listOf(
-                ProjectItem("1", "NeonAI Smart Dashboard", "Dashboard Inteligente con Arrastre Táctil", aiProjectRoot)
-            )
-        )
-    }
-
-    var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList[0]) }
+    var projectsList by remember { mutableStateOf(initialProjects) }
+    var activeProject by remember { mutableStateOf<ProjectItem?>(projectsList.firstOrNull()) }
 
     val emulatorTab = remember { OpenTab(id = "EMULATOR_TAB", title = "📱 Emulador AVD", isEmulator = true) }
     var openTabs by remember { mutableStateOf(listOf(emulatorTab)) }
@@ -220,7 +229,7 @@ fun NeonUniversalEmulatorApp(
                     }
                 }
 
-                // 📂 PANEL EXPLORADOR DESLIZABLE
+                // 📂 EXPLORADOR MOSTRANDO SIEMPRE LOS PROYECTOS CREADOS
                 if (showFileExplorerDrawer) {
                     FileExplorerDrawer(
                         projectsList = projectsList,
@@ -268,7 +277,8 @@ fun NeonUniversalEmulatorApp(
                                 name = newName,
                                 isDirectory = true,
                                 children = listOf(
-                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nclass MainActivity")
+                                    ProjectFile("$newName/MainActivity.kt", "MainActivity.kt", false, "package com.mi.app\n\nclass MainActivity"),
+                                    ProjectFile("$newName/AndroidManifest.xml", "AndroidManifest.xml", false, "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n</manifest>")
                                 )
                             )
                             val newProjItem = ProjectItem(newId, newName, "Proyecto Creado", newRoot)
