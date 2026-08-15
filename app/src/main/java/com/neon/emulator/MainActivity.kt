@@ -26,6 +26,7 @@ import com.neon.emulator.model.ProjectItem
 import com.neon.emulator.ui.drawer.FileExplorerDrawer
 import com.neon.emulator.ui.editor.CodeEditorScreen
 import com.neon.emulator.ui.editor.ProjectFile
+import com.neon.emulator.ui.editor.StorageManager
 import com.neon.emulator.ui.emulator.EmulatorCanvasScreen
 import com.neon.emulator.ui.navigation.TabsBar
 import com.neon.emulator.ui.settings.SettingsBottomSheet
@@ -117,7 +118,7 @@ fun NeonUniversalEmulatorApp(
     var showFileExplorerDrawer by remember { mutableStateOf(false) }
     var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
 
-    // Proyectos Reales Creados en el Workspace
+    // Proyecto SoundNeon Music
     val musicProjectRoot = remember {
         ProjectFile(
             path = "SoundNeonMusicApp",
@@ -131,9 +132,7 @@ fun NeonUniversalEmulatorApp(
                     content = """
                         <?xml version="1.0" encoding="utf-8"?>
                         <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-                            <application
-                                android:label="SoundNeon Music"
-                                android:theme="@style/Theme.SoundNeon">
+                            <application android:label="SoundNeon Music" android:theme="@style/Theme.SoundNeon">
                                 <activity android:name=".MainActivity" android:exported="true">
                                     <intent-filter>
                                         <action android:name="android.intent.action.MAIN" />
@@ -148,68 +147,19 @@ fun NeonUniversalEmulatorApp(
                     path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/MainActivity.kt",
                     name = "MainActivity.kt",
                     isDirectory = false,
-                    content = """
-                        package com.soundneon.app
-
-                        import android.os.Bundle
-                        import androidx.activity.ComponentActivity
-                        import androidx.activity.compose.setContent
-
-                        class MainActivity : ComponentActivity() {
-                            override fun onCreate(savedInstanceState: Bundle?) {
-                                super.onCreate(savedInstanceState)
-                                setContent {
-                                    // SoundNeon Jetpack App Entry Point
-                                }
-                            }
-                        }
-                    """.trimIndent()
+                    content = "package com.soundneon.app\n\nimport androidx.activity.ComponentActivity\n\nclass MainActivity : ComponentActivity()"
                 ),
                 ProjectFile(
                     path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/ui/HomeScreen.kt",
                     name = "HomeScreen.kt",
                     isDirectory = false,
-                    content = """
-                        package com.soundneon.app.ui
-
-                        import androidx.compose.runtime.Composable
-                        import androidx.compose.material3.Text
-
-                        @Composable
-                        fun HomeScreen() {
-                            Text(text = "Reproductor SoundNeon Synthwave", color = Color.White)
-                        }
-                    """.trimIndent()
+                    content = "package com.soundneon.app.ui\n\n@Composable\nfun HomeScreen() {\n    Text(text = \"SoundNeon Synthwave\")\n}"
                 ),
                 ProjectFile(
                     path = "SoundNeonMusicApp/app/src/main/java/com/soundneon/app/domain/Song.kt",
                     name = "Song.kt",
                     isDirectory = false,
-                    content = """
-                        package com.soundneon.app.domain
-
-                        data class Song(
-                            val id: String,
-                            val title: String,
-                            val artist: String
-                        )
-                    """.trimIndent()
-                )
-            )
-        )
-    }
-
-    val demoProjectRoot = remember {
-        ProjectFile(
-            path = "DemoApp",
-            name = "DemoApp",
-            isDirectory = true,
-            children = listOf(
-                ProjectFile(
-                    path = "DemoApp/MainActivity.kt",
-                    name = "MainActivity.kt",
-                    isDirectory = false,
-                    content = "package com.demo.app\n\n// Demo App Entry Point"
+                    content = "package com.soundneon.app.domain\n\ndata class Song(val id: String, val title: String)"
                 )
             )
         )
@@ -218,8 +168,7 @@ fun NeonUniversalEmulatorApp(
     var projectsList by remember {
         mutableStateOf(
             listOf(
-                ProjectItem("1", "SoundNeon Music", "App de Música Jetpack Compose", musicProjectRoot),
-                ProjectItem("2", "DemoApp", "Proyecto de Prueba Básica", demoProjectRoot)
+                ProjectItem("1", "SoundNeon Music", "App de Música Jetpack Compose", musicProjectRoot)
             )
         )
     }
@@ -297,6 +246,7 @@ fun NeonUniversalEmulatorApp(
                     if (activeFile != null) {
                         CodeEditorScreen(
                             activeFile = activeFile,
+                            projectName = activeProject.name,
                             onRenderUpdatedCode = onRenderUpdatedCode
                         )
                     }
@@ -333,6 +283,9 @@ fun NeonUniversalEmulatorApp(
                             val newProjItem = ProjectItem(newId, newName, "Proyecto Jetpack Creado", newRoot)
                             projectsList = projectsList + newProjItem
                             activeProject = newProjItem
+
+                            // Guardar estructura inicial físicamente en el teléfono
+                            StorageManager.saveFileToDevice(newName, "MainActivity.kt", "package com.nuevo.app\n\nclass MainActivity")
                         },
                         onClose = { showFileExplorerDrawer = false }
                     )

@@ -16,9 +16,11 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun CodeEditorScreen(
     activeFile: ProjectFile,
+    projectName: String,
     onRenderUpdatedCode: (String) -> Unit
 ) {
     var codeContent by remember(activeFile.path) { mutableStateOf(activeFile.content) }
+    var saveMessage by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -31,22 +33,34 @@ fun CodeEditorScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "✏️ Editando: ${activeFile.name}",
-                color = Color(0xFF38BDF8),
-                fontSize = 12.sp,
-                fontFamily = FontFamily.Monospace
-            )
+            Column {
+                Text(
+                    text = "✏️ Editando: ${activeFile.name}",
+                    color = Color(0xFF38BDF8),
+                    fontSize = 12.sp,
+                    fontFamily = FontFamily.Monospace
+                )
+                if (saveMessage.isNotEmpty()) {
+                    Text(text = saveMessage, color = Color(0xFF10B981), fontSize = 10.sp)
+                }
+            }
+
             Button(
                 onClick = {
                     activeFile.content = codeContent
+                    // 1. Guardar físicamente en el disco del teléfono (/sdcard/NeonEmulatorProjects/)
+                    val savedFile = StorageManager.saveFileToDevice(projectName, activeFile.name, codeContent)
+                    if (savedFile != null) {
+                        saveMessage = "Guardado en /sdcard/NeonEmulatorProjects/"
+                    }
+                    // 2. Aplicar cambio en tiempo real al emulador
                     onRenderUpdatedCode(codeContent)
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
             ) {
                 Icon(Icons.Default.Download, contentDescription = "Guardar", modifier = Modifier.size(14.dp))
                 Spacer(modifier = Modifier.width(4.dp))
-                Text("Aplicar Cambios", fontSize = 11.sp, color = Color.White)
+                Text("Guardar en Disco", fontSize = 11.sp, color = Color.White)
             }
         }
 
