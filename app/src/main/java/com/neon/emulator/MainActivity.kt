@@ -1,7 +1,5 @@
 package com.neon.emulator
 
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.os.Bundle
 import android.util.Base64
 import android.webkit.WebChromeClient
@@ -20,9 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,16 +38,15 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import java.net.NetworkInterface
 
-enum class PhoneModel(val displayName: String, val aspectRatioWidth: Float, val cornerRadius: Int) {
-    SAMSUNG_A55("Samsung Galaxy A55 5G", 0.98f, 28),
-    SAMSUNG_A50("Samsung Galaxy A50", 0.94f, 24),
-    SAMSUNG_S24_ULTRA("Samsung Galaxy S24 Ultra", 1.05f, 16),
-    PIXEL_8_PRO("Google Pixel 8 Pro", 1f, 36),
-    IPHONE_15_PRO_MAX("iPhone 15 Pro Max", 0.95f, 44),
-    IPHONE_SE("iPhone SE / Compact", 0.85f, 20)
-}
+enum class ViewMode { EMULATOR, PROJECT_EXPLORER, FILE_EDITOR }
 
-data class ChatMessage(val sender: String, val text: String, val isUser: Boolean)
+data class ProjectFile(
+    val path: String,
+    val name: String,
+    val isDirectory: Boolean,
+    val content: String = "",
+    val children: List<ProjectFile> = emptyList()
+)
 
 class MainActivity : ComponentActivity() {
 
@@ -57,18 +57,14 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         startAgentServer()
 
         setContent {
-            NeonUniversalEmulatorApp(
+            NeonIDEStudioApp(
                 statusText = serverStatusText,
                 isConnected = isServerConnected,
                 onReload = { webViewRef?.reload() },
-                onWebViewCreated = { webViewRef = it },
-                onExecuteUserCommand = { command ->
-                    webViewRef?.evaluateJavascript(command, null)
-                }
+                onWebViewCreated = { webViewRef = it }
             )
         }
     }
@@ -127,184 +123,313 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NeonUniversalEmulatorApp(
+fun NeonIDEStudioApp(
     statusText: String,
     isConnected: Boolean,
     onReload: () -> Unit,
-    onWebViewCreated: (WebView) -> Unit,
-    onExecuteUserCommand: (String) -> Unit
+    onWebViewCreated: (WebView) -> Unit
 ) {
+    var currentViewMode by remember { mutableStateOf(ViewMode.EMULATOR) }
     var showSettingsSheet by remember { mutableStateOf(false) }
-    var showAgentChatDialog by remember { mutableStateOf(false) }
-    var selectedModel by remember { mutableStateOf(PhoneModel.SAMSUNG_A55) }
-    
-    var chatMessages by remember {
-        mutableStateOf(
-            listOf(
-                ChatMessage("🤖 Antigravity Agent (Gemini Pro)", "¡Hola! Estoy conectado mediante Antigravity CLI & Gemini Pro. ¿Qué cambio deseas ver en tu app?", false)
+    var projectName by remember { mutableStateOf("MusicApp") }
+    var activeEditingFile by remember { mutableStateOf<ProjectFile?>(null) }
+    var fileCodeContent by remember { mutableStateOf("") }
+
+    // Estructura oficial del proyecto Jetpack Compose en memoria
+    val sampleMusicProject = remember(projectName) {
+        ProjectFile(
+            path = projectName,
+            name = projectName,
+            isDirectory = true,
+            children = listOf(
+                ProjectFile(
+                    path = "$projectName/app",
+                    name = "app",
+                    isDirectory = true,
+                    children = listOf(
+                        ProjectFile(
+                            path = "$projectName/app/build.gradle.kts",
+                            name = "build.gradle.kts",
+                            isDirectory = false,
+                            content = """
+                                plugins {
+                                    id("com.android.application")
+                                    id("org.jetbrains.kotlin.android")
+                                }
+                                android {
+                                    namespace = "com.ejemplo.musicapp"
+                                    compileSdk = 34
+                                    buildFeatures { compose = true }
+                                }
+                            """.trimIndent()
+                        ),
+                        ProjectFile(
+                            path = "$projectName/app/src/main/AndroidManifest.xml",
+                            name = "AndroidManifest.xml",
+                            isDirectory = false,
+                            content = """
+                                <?xml version="1.0" encoding="utf-8"?>
+                                <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+                                    <application
+                                        android:label="MusicApp"
+                                        android:theme="@style/Theme.MusicApp">
+                                        <activity android:name=".MainActivity" android:exported="true">
+                                            <intent-filter>
+                                                <action android:name="android.intent.action.MAIN" />
+                                                <category android:name="android.intent.category.LAUNCHER" />
+                                            </intent-filter>
+                                        </activity>
+                                    </application>
+                                </manifest>
+                            """.trimIndent()
+                        ),
+                        ProjectFile(
+                            path = "$projectName/app/src/main/java/com/ejemplo/musicapp",
+                            name = "src/main/java/com/ejemplo/musicapp",
+                            isDirectory = true,
+                            children = listOf(
+                                ProjectFile(
+                                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/MainActivity.kt",
+                                    name = "MainActivity.kt",
+                                    isDirectory = false,
+                                    content = """
+                                        package com.ejemplo.musicapp
+
+                                        import android.os.Bundle
+                                        import androidx.activity.ComponentActivity
+                                        import androidx.activity.compose.setContent
+                                        import com.ejemplo.musicapp.ui.theme.MusicAppTheme
+
+                                        class MainActivity : ComponentActivity() {
+                                            override fun onCreate(savedInstanceState: Bundle?) {
+                                                super.onCreate(savedInstanceState)
+                                                setContent {
+                                                    MusicAppTheme {
+                                                        // Renderizando App de Música
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    """.trimIndent()
+                                ),
+                                ProjectFile(
+                                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/ui/screens/HomeScreen.kt",
+                                    name = "HomeScreen.kt",
+                                    isDirectory = false,
+                                    content = """
+                                        package com.ejemplo.musicapp.ui.screens
+
+                                        import androidx.compose.runtime.Composable
+                                        import androidx.compose.material3.Text
+
+                                        @Composable
+                                        fun HomeScreen() {
+                                            Text(text = "Reproductor Cyberpunk Synthwave", color = Color.White)
+                                        }
+                                    """.trimIndent()
+                                ),
+                                ProjectFile(
+                                    path = "$projectName/app/src/main/java/com/ejemplo/musicapp/domain/model/Song.kt",
+                                    name = "Song.kt",
+                                    isDirectory = false,
+                                    content = """
+                                        package com.ejemplo.musicapp.domain.model
+
+                                        data class Song(
+                                            val id: String,
+                                            val title: String,
+                                            val artist: String,
+                                            val coverUrl: String
+                                        )
+                                    """.trimIndent()
+                                )
+                            )
+                        )
+                    )
+                )
             )
         )
     }
-    var inputMessageText by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF070A13))
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 8.dp, bottom = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header Discreto
+        Column(modifier = Modifier.fillMaxSize()) {
+            
+            // ⚙️ Top Bar IDE
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 2.dp),
+                    .background(Color(0xFF1E293B))
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(if (isConnected) Color(0xFF10B981) else Color.Red)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    if (currentViewMode != ViewMode.EMULATOR) {
+                        IconButton(
+                            onClick = { currentViewMode = ViewMode.EMULATOR },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver al Emulador", tint = Color.White)
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
                     Text(
-                        text = selectedModel.displayName,
+                        text = if (currentViewMode == ViewMode.FILE_EDITOR) activeEditingFile?.name ?: "Editor" else "📦 Proyecto: $projectName",
                         color = Color.White,
-                        fontSize = 12.sp,
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }
 
-                IconButton(
-                    onClick = { showSettingsSheet = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Configuraciones",
-                        tint = Color(0xFF38BDF8)
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = {
+                            currentViewMode = if (currentViewMode == ViewMode.PROJECT_EXPLORER) ViewMode.EMULATOR else ViewMode.PROJECT_EXPLORER
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Folder, contentDescription = "Explorador de Archivos", tint = Color(0xFF38BDF8))
+                    }
+
+                    IconButton(
+                        onClick = { showSettingsSheet = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Configuración", tint = Color(0xFF38BDF8))
+                    }
                 }
             }
 
-            // 📲 MARCO EMULADOR DINÁMICO
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(selectedModel.aspectRatioWidth)
-                    .padding(horizontal = 6.dp)
-                    .shadow(16.dp, RoundedCornerShape(selectedModel.cornerRadius.dp))
-                    .border(2.dp, Color(0xFF38BDF8).copy(alpha = 0.6f), RoundedCornerShape(selectedModel.cornerRadius.dp))
-                    .clip(RoundedCornerShape(selectedModel.cornerRadius.dp))
-                    .background(Color(0xFF0F172A))
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Top Notch según Modelo
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(24.dp)
-                            .background(Color.Black),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        when (selectedModel) {
-                            PhoneModel.IPHONE_15_PRO_MAX -> {
-                                Box(
-                                    modifier = Modifier
-                                        .width(85.dp)
-                                        .height(16.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(Color(0xFF1E293B))
-                                )
-                            }
-                            PhoneModel.SAMSUNG_A50 -> {
-                                // Notch de Gota Infinity-U del Galaxy A50
-                                Box(
-                                    modifier = Modifier
-                                        .width(18.dp)
-                                        .height(12.dp)
-                                        .clip(RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp))
-                                        .background(Color(0xFF1E293B))
-                                )
-                            }
-                            else -> {
-                                // Punch Hole Infinity-O de Samsung A55, S24 Ultra & Pixel 8
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF1E293B))
-                                )
+            // 🔄 CUERPO PRINCIPAL SWAPPER: EMULADOR <-> EXPLORADOR <-> EDITOR DE CÓDIGO NATIVO
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when (currentViewMode) {
+                    ViewMode.EMULATOR -> {
+                        // 📲 Vista Emulador Nativo
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(Color(0xFF0F172A))
+                        ) {
+                            AndroidView(
+                                factory = { context ->
+                                    WebView(context).apply {
+                                        settings.javaScriptEnabled = true
+                                        settings.domStorageEnabled = true
+                                        settings.allowFileAccess = true
+                                        settings.allowContentAccess = true
+                                        settings.allowUniversalAccessFromFileURLs = true
+                                        webViewClient = WebViewClient()
+                                        webChromeClient = WebChromeClient()
+
+                                        onWebViewCreated(this)
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    ViewMode.PROJECT_EXPLORER -> {
+                        // 📂 Explorador de Archivos del Proyecto Android Studio
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF0F172A))
+                                .padding(16.dp)
+                        ) {
+                            Text("📁 Estructura del Proyecto Jetpack Compose", color = Color(0xFF38BDF8), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            LazyColumn {
+                                items(flattenFiles(sampleMusicProject)) { file ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                if (!file.isDirectory) {
+                                                    activeEditingFile = file
+                                                    fileCodeContent = file.content
+                                                    currentViewMode = ViewMode.FILE_EDITOR
+                                                }
+                                            }
+                                            .padding(vertical = 8.dp, horizontal = (file.path.split("/").size * 8).dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (file.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
+                                            contentDescription = null,
+                                            tint = if (file.isDirectory) Color(0xFF38BDF8) else Color(0xFFEC4899),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(text = file.name, color = Color.White, fontSize = 13.sp)
+                                    }
+                                }
                             }
                         }
                     }
 
-                    // PANTALLA WEBVIEW CANVAS
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    ) {
-                        AndroidView(
-                            factory = { context ->
-                                WebView(context).apply {
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    settings.allowFileAccess = true
-                                    settings.allowContentAccess = true
-                                    settings.allowUniversalAccessFromFileURLs = true
-                                    webViewClient = WebViewClient()
-                                    webChromeClient = WebChromeClient()
-
-                                    onWebViewCreated(this)
-                                }
-                            },
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    // Navigation Bar Pill
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(14.dp)
-                            .background(Color.Black),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Box(
+                    ViewMode.FILE_EDITOR -> {
+                        // 💻 Editor de Código Kotlin Completo
+                        Column(
                             modifier = Modifier
-                                .width(90.dp)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(Color.White.copy(alpha = 0.5f))
-                        )
+                                .fillMaxSize()
+                                .background(Color(0xFF0D1117))
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "✏️ Editando: ${activeEditingFile?.name}",
+                                    color = Color(0xFF38BDF8),
+                                    fontSize = 13.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Button(
+                                    onClick = {
+                                        // Guardar cambios en el dispositivo móvil
+                                        currentViewMode = ViewMode.EMULATOR
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF10B981))
+                                ) {
+                                    Icon(Icons.Default.Download, contentDescription = "Guardar", modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Guardar en Móvil", fontSize = 11.sp, color = Color.White)
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = fileCodeContent,
+                                onValueChange = { fileCodeContent = it },
+                                modifier = Modifier.fillMaxSize(),
+                                textStyle = LocalTextStyle.current.copy(
+                                    color = Color.White,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp
+                                ),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Color(0xFF38BDF8),
+                                    unfocusedBorderColor = Color(0xFF334155)
+                                )
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // 💬 BOTÓN FLOTANTE CHAT
-        FloatingActionButton(
-            onClick = { showAgentChatDialog = true },
-            containerColor = Color(0xFF0EA5E9),
-            contentColor = Color.White,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(20.dp)
-                .shadow(12.dp, CircleShape)
-        ) {
-            Text(text = "🤖", fontSize = 22.sp)
-        }
-
-        // ⚙️ SLIDING BOTTOM SHEET DE CONFIGURACIONES
+        // ⚙️ SLIDING BOTTOM SHEET DE CONFIGURACIONES & CREACIÓN DE PROYECTO
         if (showSettingsSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showSettingsSheet = false },
@@ -316,14 +441,24 @@ fun NeonUniversalEmulatorApp(
                         .padding(24.dp)
                 ) {
                     Text(
-                        text = "⚙️ Configuración Antigravity & Emulador",
+                        text = "⚙️ Configuración del Proyecto",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text(text = "Servidor Agente Antigravity (Gemini Pro):", color = Color.White, fontSize = 12.sp)
+                    Text(text = "Nombre del Proyecto / App a Crear:", color = Color.White, fontSize = 12.sp)
+                    OutlinedTextField(
+                        value = projectName,
+                        onValueChange = { projectName = it },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        textStyle = LocalTextStyle.current.copy(color = Color.White),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = "Servidor Agente (Antigravity IP):", color = Color.White, fontSize = 12.sp)
                     Surface(
                         color = Color(0xFF0F172A),
                         shape = RoundedCornerShape(8.dp),
@@ -339,122 +474,26 @@ fun NeonUniversalEmulatorApp(
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = "Seleccionar Modelo de Dispositivo:", color = Color.White, fontSize = 12.sp)
-
-                    PhoneModel.values().forEach { model ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { selectedModel = model }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = (selectedModel == model),
-                                onClick = { selectedModel = model },
-                                colors = RadioButtonDefaults.colors(selectedColor = Color(0xFF0EA5E9))
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(text = model.displayName, color = Color.White, fontSize = 14.sp)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = { showSettingsSheet = false },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Guardar y Cerrar", color = Color.White)
+                        Text("Crear / Cargar Proyecto", color = Color.White)
                     }
                 }
             }
         }
+    }
+}
 
-        // 💬 CHAT FLOTANTE CON ANTIGRAVITY & GEMINI PRO
-        if (showAgentChatDialog) {
-            AlertDialog(
-                onDismissRequest = { showAgentChatDialog = false },
-                containerColor = Color(0xFF1E293B),
-                title = {
-                    Text("🤖 Chat Antigravity (Gemini Pro)", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                },
-                text = {
-                    Column(modifier = Modifier.height(300.dp)) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .background(Color(0xFF0F172A), RoundedCornerShape(8.dp))
-                                .padding(8.dp)
-                        ) {
-                            items(chatMessages) { msg ->
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 4.dp),
-                                    horizontalAlignment = if (msg.isUser) Alignment.End else Alignment.Start
-                                ) {
-                                    Text(
-                                        text = msg.sender,
-                                        color = if (msg.isUser) Color(0xFF38BDF8) else Color(0xFFEC4899),
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Surface(
-                                        color = if (msg.isUser) Color(0xFF0EA5E9) else Color(0xFF334155),
-                                        shape = RoundedCornerShape(8.dp)
-                                    ) {
-                                        Text(
-                                            text = msg.text,
-                                            color = Color.White,
-                                            fontSize = 13.sp,
-                                            modifier = Modifier.padding(8.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            OutlinedTextField(
-                                value = inputMessageText,
-                                onValueChange = { inputMessageText = it },
-                                placeholder = { Text("Escribe a Gemini Pro...", color = Color.Gray, fontSize = 12.sp) },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                            IconButton(onClick = {
-                                if (inputMessageText.isNotBlank()) {
-                                    val userText = inputMessageText
-                                    chatMessages = chatMessages + ChatMessage("👤 Tú", userText, true)
-                                    inputMessageText = ""
-                                    
-                                    val aiResponse = when {
-                                        userText.contains("baja", ignoreCase = true) -> "⚡ Antigravity: Aplicando ajuste de margen inferior en la UI..."
-                                        userText.contains("color", ignoreCase = true) -> "⚡ Antigravity: Cambiando paleta de colores a Blanco & Neón..."
-                                        else -> "⚡ Gemini Pro: Instrucción recibida ('$userText'). Aplicando cambios en tiempo real..."
-                                    }
-                                    chatMessages = chatMessages + ChatMessage("🤖 Antigravity (Gemini Pro)", aiResponse, false)
-                                    
-                                    onExecuteUserCommand(userText)
-                                }
-                            }) {
-                                Icon(Icons.Default.Send, contentDescription = "Enviar", tint = Color(0xFF0EA5E9))
-                            }
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(onClick = { showAgentChatDialog = false }) {
-                        Text("Cerrar Chat", color = Color.White)
-                    }
-                }
-            )
+fun flattenFiles(file: ProjectFile): List<ProjectFile> {
+    val result = mutableListOf<ProjectFile>()
+    result.add(file)
+    if (file.isDirectory) {
+        file.children.forEach { child ->
+            result.addAll(flattenFiles(child))
         }
     }
+    return result
 }
